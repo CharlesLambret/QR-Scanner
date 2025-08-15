@@ -1,0 +1,201 @@
+{% extends "layout.html" %}
+{% block content %}
+<div id="progress" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+  En attente du démarrage du scan...
+</div>
+
+<!-- Statistiques -->
+<div id="stats" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+  <h3 class="font-semibold">Statistiques du scan :</h3>
+  <ul id="stats-list" class="list-disc list-inside mt-2"></ul>
+</div>
+
+<!-- Tableau des résultats -->
+<table id="results-table" class="hidden table-auto w-full border-collapse border border-gray-300 mb-6">
+  <thead class="bg-gray-100">
+    <tr>
+      <th class="border px-4 py-2">Page</th>
+      <th class="border px-4 py-2">URL</th>
+      <th class="border px-4 py-2">Domaine</th>
+      <th class="border px-4 py-2">Status HTTP</th>
+      <th class="border px-4 py-2">Paramètres UTM</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<!-- Extractions de texte (si activées) -->
+<div id="extractions" class="hidden">
+  <h3 class="text-lg font-semibold mb-2">Extractions de texte (pages impaires) :</h3>
+  <div id="extractions-content" class="bg-gray-100 border rounded p-4 max-h-64 overflow-y-auto"></div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+  const scanId = "{{ scan_id }}";
+  console.log("🔍 Script démarré, scanId:", scanId);
+  
+  const socket = io();
+  console.log("🔌 Socket.IO instance créée");
+
+  socket.on("scan_progress", data => {
+    console.log("📊 Event scan_progress reçu:", data);
+    console.log("📊 Comparaison scanId - Reçu:", data.scan_id, "Attendu:", scanId, "Match:", data.scan_id === scanId);
+    console.log("📊 Type de scanId reçu:", typeof data.scan_id, "Type attendu:", typeof scanId);
+    
+    if (data.scan_id === scanId) {
+      console.log("✅ scan_progress: mise à jour du message:", data.message);
+      document.getElementById("progress").innerText = data.message;
+    } else {
+      console.log("❌ scan_progress: scanId ne correspond pas");
+      console.log("❌ Détail: '" + data.scan_id + "' !== '" + scanId + "'");
+    }
+  });
+
+  socket.on("scan_complete", data => {
+    console.log("🎉 Event scan_complete reçu:", data);
+    console.log("🎉 Comparaison scanId - Reçu:", data.scan_id, "Attendu:", scanId, "Match:", data.scan_id === scanId);
+    console.log("🎉 Structure data.results:", data.results);
+    
+    if (data.scan_id === scanId) {
+      console.log("✅ scan_complete: traitement des résultats...");
+      
+      // Cacher le message de progression
+      console.log("🔧 Masquage du message de progression");
+      document.getElementById("progress").style.display = "none";
+      
+      // Afficher les statistiques
+      console.log("📈 Traitement des statistiques...");
+      const statsDiv = document.getElementById("stats");
+      const statsList = document.getElementById("stats-list");
+      const stats = data.results.stats;
+      console.log("📈 Stats reçues:", stats);
+      
+      if (stats) {
+        statsList.innerHTML = `
+          <li>Pages totales : ${stats.total_pages}</li>
+          <li>Pages avec QR codes : ${stats.pages_with_qr}</li>
+          <li>URLs uniques trouvées : ${stats.unique_urls}</li>
+          <li>Lignes de texte extraites : ${stats.extracted_lines}</li>
+        `;
+        statsDiv.classList.remove("hidden");
+        console.log("📈 Statistiques affichées");
+      } else {
+        console.log("❌ Pas de statistiques dans les données");
+      }
+      
+      // Afficher les résultats URL
+      console.log("🔗 Traitement des URLs...");
+      const tbody = document.querySelector("#results-table tbody");
+      const urlResults = data.results.url_results || [];
+      console.log("🔗 URL results:", urlResults, "Length:", urlResults.length);
+      
+      if (urlResults.length > 0) {
+        console.log("🔗 Affichage du tableau des URLs");
+        document.getElementById("results-table").classList.remove("hidden");
+        
+        urlResults.forEach((result, index) => {
+          console.log(`🔗 Traitement URL ${index + 1}:`, result);
+          const tr = document.createElement("tr");
+          const utmText = result.utm ? 
+            Object.entries(result.utm).map(([k,v]) => `${k}: ${v}`).join(", ") : 
+            "Aucun";
+            
+          tr.innerHTML = `
+            <td class="border px-4 py-2">${result.page}</td>
+            <td class="border px-4 py-2">
+              <a href="${result.url}" target="_blank" class="text-blue-600 hover:underline" title="${result.url}">
+                ${result.url.length > 50 ? result.url.substring(0, 50) + '...' : result.url}
+              </a>
+            </td>
+            <td class="border px-4 py-2">${result.netloc || 'N/A'}</td>
+            <td class="border px-4 py-2">
+              <span class="${result.http_status === 200 ? 'text-green-600' : 'text-red-600'}">
+                ${result.http_status || 'N/A'}
+              </span>
+            </td>
+            <td class="border px-4 py-2 text-sm">${utmText}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+        console.log("🔗 Tableau des URLs peuplé avec", urlResults.length, "entrées");
+      } else {
+        console.log("⚠️ Aucune URL trouvée, affichage du message d'information");
+        // Aucune URL trouvée
+        const noResultsDiv = document.createElement("div");
+        noResultsDiv.className = "bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4";
+        noResultsDiv.innerText = "Aucun QR code avec URL détecté dans ce PDF.";
+        document.getElementById("stats").after(noResultsDiv);
+      }
+      
+      // Afficher les extractions si disponibles
+      console.log("📝 Traitement des extractions de texte...");
+      const extractions = data.results.extractions || [];
+      console.log("📝 Extractions:", extractions, "Length:", extractions.length);
+      
+      if (extractions.length > 0) {
+        console.log("📝 Affichage des extractions");
+        const extractionsDiv = document.getElementById("extractions");
+        const extractionsContent = document.getElementById("extractions-content");
+        
+        extractionsContent.innerHTML = extractions
+          .map(ext => `<div class="mb-1"><strong>Page ${ext.page}:</strong> ${ext.line}</div>`)
+          .join("");
+        
+        extractionsDiv.classList.remove("hidden");
+        console.log("📝 Extractions affichées");
+      } else {
+        console.log("📝 Aucune extraction de texte");
+      }
+      
+      // Message de fin
+      console.log("🎉 Ajout du message de succès");
+      const successDiv = document.createElement("div");
+      successDiv.className = "bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mt-4";
+      successDiv.innerText = "✅ Scan terminé avec succès !";
+      document.querySelector("main").appendChild(successDiv);
+      console.log("🎉 Traitement terminé avec succès");
+    } else {
+      console.log("❌ scan_complete: scanId ne correspond pas");
+    }
+  });
+
+  socket.on("scan_error", data => {
+    console.log("❌ Event scan_error reçu:", data);
+    if (data.scan_id === scanId) {
+      document.getElementById("progress").innerHTML = `
+        <span class="text-red-600">❌ Erreur pendant le scan: ${data.error}</span>
+      `;
+      document.getElementById("progress").className = "bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4";
+    }
+  });
+
+  socket.on("connect", () => {
+    console.log("🔌 Socket.IO connecté avec succès");
+    console.log("🔌 Socket ID:", socket.id);
+    
+    // Signaler au serveur que ce client est prêt pour ce scan
+    console.log("📡 Envoi de client_ready pour scanId:", scanId);
+    socket.emit("client_ready", { scan_id: scanId });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("🔌 Socket.IO déconnecté");
+  });
+
+  socket.on("error", (error) => {
+    console.log("❌ Erreur Socket.IO:", error);
+  });
+
+  // Log de tous les événements reçus
+  socket.onAny((eventName, ...args) => {
+    console.log("📡 Event reçu:", eventName, "Args:", args);
+  });
+
+  // Test d'envoi d'un message au serveur
+  setTimeout(() => {
+    console.log("🧪 Test d'envoi de message au serveur");
+    socket.emit("test_message", { scanId: scanId, message: "Test depuis le client" });
+  }, 1000);
+</script>
+{% endblock %}

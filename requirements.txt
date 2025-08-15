@@ -1,0 +1,10 @@
+Flask>=3.0,<4.0
+python-dotenv>=1.0
+Werkzeug>=3.0
+PyMuPDF>=1.23
+opencv-python-headless>=4.9
+pyzbar>=0.1.9
+requests>=2.32
+flask-socketio>=5.3
+python-socketio[client]>=5.11
+eventlet>=0.33
