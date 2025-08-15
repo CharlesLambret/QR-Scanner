@@ -13,11 +13,9 @@ class ScanOptions:
     """Options de configuration pour un scan"""
     timeout: int
     search_texts: Optional[List[str]]
-    extract_text: bool
     expected_domains: Optional[List[str]] = None
     expected_utm_params: Optional[Dict[str, str]] = None
-    landing_page_texts: Optional[List[str]] = None
-    unstructured_data_query: Optional[str] = None
+    ai_extraction_options: Optional[Dict[str, Any]] = None
 
 
 def scan_file(pdf_path: str, options: ScanOptions, scan_id: str = None,
@@ -61,12 +59,10 @@ def scan_file(pdf_path: str, options: ScanOptions, scan_id: str = None,
             pdf_path=pdf_path,
             timeout=options.timeout,
             search_texts=options.search_texts,
-            extract_text=options.extract_text,
             progress_callback=enhanced_progress_callback,
             expected_domains=options.expected_domains,
             expected_utm_params=options.expected_utm_params,
-            landing_page_texts=options.landing_page_texts,
-            unstructured_data_query=options.unstructured_data_query
+            ai_extraction_options=options.ai_extraction_options
         )
         
         # Exécution du scan
@@ -122,12 +118,10 @@ def _enrich_results(results: Dict[str, Any], pdf_path: str,
         },
         "scan_options": {
             "timeout": options.timeout,
-            "extract_text": options.extract_text,
             "search_texts_count": len(options.search_texts) if options.search_texts else 0,
             "has_domain_validation": bool(options.expected_domains),
             "has_utm_validation": bool(options.expected_utm_params),
-            "has_landing_page_validation": bool(options.landing_page_texts),
-            "has_ai_extraction": bool(options.unstructured_data_query)
+            "has_ai_extraction": bool(options.ai_extraction_options)
         },
         "processing_info": {
             "scanner_version": "2.0.0-refactored",
@@ -162,13 +156,10 @@ def _get_modules_used(options: ScanOptions) -> List[str]:
     """
     modules = ["qr_detector", "http_validator"]
     
-    if options.extract_text:
-        modules.append("text_extractor")
-    
-    if options.unstructured_data_query:
+    if options.ai_extraction_options:
         modules.append("ai_extractor")
-    
-    if options.expected_domains or options.expected_utm_params or options.landing_page_texts:
+
+    if options.expected_domains or options.expected_utm_params:
         modules.append("advanced_validation")
     
     return modules

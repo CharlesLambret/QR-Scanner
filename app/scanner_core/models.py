@@ -6,4 +6,3 @@ class PDFTask:
     pdf_path: str
     timeout: int = 10
     search_texts: Optional[List[str]] = None
-    extract_text: bool = False

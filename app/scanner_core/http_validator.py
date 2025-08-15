@@ -13,7 +13,7 @@ class HTTPValidator:
     def __init__(self, timeout: int = 10, 
                  expected_domains: Optional[List[str]] = None,
                  expected_utm_params: Optional[Dict[str, str]] = None,
-                 landing_page_texts: Optional[List[str]] = None,
+                search_texts: Optional[List[str]] = None,
                  log_callback=None):
         """
         Initialise le validateur HTTP
@@ -22,13 +22,13 @@ class HTTPValidator:
             timeout: Timeout pour les requêtes HTTP
             expected_domains: Liste des domaines attendus
             expected_utm_params: Paramètres UTM attendus
-            landing_page_texts: Textes à rechercher sur les pages de destination
+                    search_texts: Textes à rechercher sur les pages de destination
             log_callback: Fonction de callback pour les logs
         """
         self.timeout = timeout
         self.expected_domains = expected_domains or []
         self.expected_utm_params = expected_utm_params or {}
-        self.landing_page_texts = landing_page_texts or []
+        self.search_texts = search_texts or []
         self.log_callback = log_callback or (lambda level, msg: None)
     
     def validate_url(self, url: str) -> Dict[str, Any]:
@@ -78,7 +78,7 @@ class HTTPValidator:
                 result["text_search_valid"] = self._validate_page_content(
                     http_result["response_text"]
                 )
-            elif self.landing_page_texts:
+            elif self.search_texts:
                 result["text_search_valid"] = False
                 
         except Exception as e:
@@ -163,13 +163,13 @@ class HTTPValidator:
         Returns:
             Optional[bool]: True si les textes sont trouvés, False sinon, None si pas de validation
         """
-        if not self.landing_page_texts:
+        if not self.search_texts:
             return None
         
         response_lower = response_text.lower()
         
         # Vérifier si au moins un des textes est présent
-        for text in self.landing_page_texts:
+        for text in self.search_texts:
             if text.lower() in response_lower:
                 return True
         
@@ -213,7 +213,7 @@ class HTTPValidator:
             result["content_length"] = response.headers.get("content-length")
             
             # Si on a besoin du contenu de la page et que HEAD a réussi
-            if self.landing_page_texts and response.status_code == 200:
+            if self.search_texts and response.status_code == 200:
                 try:
                     get_response = requests.get(
                         url, 
@@ -240,10 +240,7 @@ class HTTPValidator:
                 result["final_url"] = response.url
                 result["content_type"] = response.headers.get("content-type")
                 result["content_length"] = len(response.content) if response.content else None
-                
-                if self.landing_page_texts:
-                    result["response_text"] = response.text
-                    
+             
             except Exception as e:
                 self.log_callback("WARNING", f"Erreur lors de la requête HTTP pour {url}: {e}")
                 result["error"] = str(e)

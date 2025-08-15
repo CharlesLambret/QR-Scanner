@@ -1,4 +1,16 @@
-<!-- Composant : Résultats d'extraction IA -->
+<!-- Composant : Résultats d'ext    <!-- Tableau des résultats -->
+    <div class="bg-white border border-purple-200 rounded-lg overflow-hidden">
+      <div class="overflow-x-auto">
+        <table id="ai-results-table" class="w-full table-auto border-collapse">
+          <thead id="ai-table-header" class="bg-purple-100">
+            <!-- En-têtes générés dynamiquement -->
+          </thead>
+          <tbody id="ai-table-body">
+            <!-- Contenu généré dynamiquement -->
+          </tbody>
+        </table>
+      </div>
+    </div>
 <div id="ai-extractions" class="hidden mb-6">
   <div class="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-4">
     <h3 class="text-xl font-bold mb-3 text-purple-800 flex items-center gap-2">
@@ -36,10 +48,9 @@
         <table id="ai-results-table" class="w-full table-auto border-collapse">
           <thead class="bg-purple-100">
             <tr>
-              <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">#</th>
-              <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">Type/Classe</th>
-              <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">Texte Extrait</th>
-              <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">Page</th>
+              <th class="border-b border-purple-200 px-3 py-2 text-center text-purple-800 w-24">Page</th>
+              <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">Données extraites</th>
+              <th class="border-b border-purple-200 px-3 py-2 text-center text-purple-800 w-32">Résumé</th>
             </tr>
           </thead>
           <tbody></tbody>

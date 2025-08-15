@@ -111,7 +111,6 @@ def _extract_api_parameters(form_data) -> dict:
     # Validation avancée
     expected_domains = _parse_api_domains(form_data.get("expected_domains", ""))
     expected_utm_params = _parse_api_utm_params(form_data.get("expected_utm_params", ""))
-    landing_page_texts = _parse_api_landing_texts(form_data.get("landing_page_texts", ""))
     
     # Extraction IA
     unstructured_data_query = form_data.get("unstructured_data_query", "").strip() or None
@@ -122,7 +121,6 @@ def _extract_api_parameters(form_data) -> dict:
         "extract_text": extract_text,
         "expected_domains": expected_domains,
         "expected_utm_params": expected_utm_params,
-        "landing_page_texts": landing_page_texts,
         "unstructured_data_query": unstructured_data_query
     }
 
@@ -163,14 +161,6 @@ def _parse_api_utm_params(utm_str: str) -> dict:
     
     return params if params else None
 
-
-def _parse_api_landing_texts(texts_str: str) -> list:
-    """Parse les textes de page de destination pour l'API"""
-    if not texts_str:
-        return None
-    
-    texts = [t.strip() for t in texts_str.split(";") if t.strip()]
-    return texts if texts else None
 
 
 def _is_valid_domain_format(domain: str) -> bool:

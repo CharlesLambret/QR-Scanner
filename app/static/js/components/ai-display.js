@@ -6,7 +6,8 @@ class AIDisplay {
     this.aiExtractionsDiv = document.getElementById("ai-extractions");
     this.aiQueryText = document.getElementById("ai-query-text");
     this.aiMetadata = document.getElementById("ai-metadata");
-    this.aiTableBody = document.querySelector("#ai-results-table tbody");
+    this.aiTableHeader = document.getElementById("ai-table-header");
+    this.aiTableBody = document.getElementById("ai-table-body");
     this.aiTotalExtractions = document.getElementById("ai-total-extractions");
     this.aiModelUsed = document.getElementById("ai-model-used");
     
@@ -32,14 +33,15 @@ class AIDisplay {
     
     // Afficher la requête
     if (this.aiQueryText) {
-      this.aiQueryText.textContent = aiExtraction.query || 'Non spécifiée';
+      const keywords = aiExtraction.keywords || [];
+      this.aiQueryText.textContent = `Keywords sélectionnés: ${keywords.join(', ')}` || 'Non spécifiées';
     }
     
     // Afficher les métadonnées si disponibles
     this._displayMetadata(aiExtraction);
     
-    // Populer le tableau
-    this._populateTable(aiExtraction.extracted_data);
+    // Créer le tableau dynamique basé sur les keywords
+    this._createDynamicTable(aiExtraction.keywords || [], aiExtraction.extracted_data);
     
     // Afficher la section
     if (this.aiExtractionsDiv) {
@@ -62,35 +64,147 @@ class AIDisplay {
     }
   }
 
-  _populateTable(extractedData) {
-    if (!this.aiTableBody) return;
+  _createDynamicTable(keywords, extractedData) {
+    if (!this.aiTableHeader || !this.aiTableBody) return;
     
+    // Nettoyer le tableau
+    this.aiTableHeader.innerHTML = "";
     this.aiTableBody.innerHTML = "";
     
-    extractedData.forEach((item, index) => {
-      const tr = document.createElement("tr");
-      tr.className = index % 2 === 0 ? "bg-white" : "bg-purple-25";
-      
-      // Badge pour le type/classe
-      const typeClass = item.extraction_class || item.type || 'unknown';
-      const typeBadge = `<span class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded font-medium">${typeClass}</span>`;
-      
-      // Extraire le numéro de page
-      let pageNumber = this._extractPageNumber(item);
-      console.log(`🤖 Extraction ${item.id}: page=${pageNumber}, text="${item.text}"`);
-      
-      tr.innerHTML = `
-        <td class="border-b border-purple-100 px-3 py-2 text-center font-medium">${item.id}</td>
-        <td class="border-b border-purple-100 px-3 py-2">${typeBadge}</td>
-        <td class="border-b border-purple-100 px-3 py-2">
-          <span class="font-medium text-gray-800">${this._escapeHtml(item.text || item.extraction_text || '')}</span>
-        </td>
-        <td class="border-b border-purple-100 px-3 py-2 text-center">
-          <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">${pageNumber}</span>
-        </td>
-      `;
-      this.aiTableBody.appendChild(tr);
+    if (!keywords || keywords.length === 0) {
+      this.aiTableBody.innerHTML = '<tr><td colspan="100%" class="text-center text-gray-500 p-4">Aucun keyword sélectionné</td></tr>';
+      return;
+    }
+    
+    // Créer l'en-tête avec une colonne "Page" + une colonne par keyword
+    const headerRow = document.createElement("tr");
+    
+    // Colonne Page
+    const pageHeader = document.createElement("th");
+    pageHeader.className = "border-b border-purple-200 px-3 py-2 text-left text-purple-800 bg-purple-100";
+    pageHeader.textContent = "Page";
+    headerRow.appendChild(pageHeader);
+    
+    // Une colonne par keyword
+    keywords.forEach(keyword => {
+      const keywordHeader = document.createElement("th");
+      keywordHeader.className = "border-b border-purple-200 px-3 py-2 text-left text-purple-800 bg-purple-100";
+      keywordHeader.innerHTML = this._getKeywordIcon(keyword) + " " + this._getKeywordDisplayName(keyword);
+      headerRow.appendChild(keywordHeader);
     });
+    
+    this.aiTableHeader.appendChild(headerRow);
+    
+    // Organiser les données par page
+    const dataByPage = this._organizeDataByPage(extractedData);
+    
+    // Créer les lignes de données
+    Object.keys(dataByPage).sort((a, b) => parseInt(a) - parseInt(b)).forEach((pageNum, index) => {
+      const pageData = dataByPage[pageNum];
+      const row = document.createElement("tr");
+      row.className = index % 2 === 0 ? "bg-white hover:bg-purple-25" : "bg-purple-25 hover:bg-purple-50";
+      
+      // Colonne Page
+      const pageCell = document.createElement("td");
+      pageCell.className = "border-b border-purple-100 px-3 py-2 text-center";
+      pageCell.innerHTML = `<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-medium">Page ${pageNum}</span>`;
+      row.appendChild(pageCell);
+      
+      // Une colonne par keyword
+      keywords.forEach(keyword => {
+        const keywordCell = document.createElement("td");
+        keywordCell.className = "border-b border-purple-100 px-3 py-2";
+        
+        const valuesForKeyword = this._getValuesForKeyword(pageData, keyword);
+        if (valuesForKeyword.length > 0) {
+          keywordCell.innerHTML = valuesForKeyword.map(value => 
+            `<div class="mb-1 last:mb-0"><span class="inline-block bg-purple-50 text-purple-800 px-2 py-1 rounded text-sm">${this._escapeHtml(value)}</span></div>`
+          ).join('');
+        } else {
+          keywordCell.innerHTML = '<span class="text-gray-400 text-sm italic">-</span>';
+        }
+        
+        row.appendChild(keywordCell);
+      });
+      
+      this.aiTableBody.appendChild(row);
+    });
+    
+    console.log(`🤖 Tableau dynamique créé avec ${keywords.length} keywords et ${Object.keys(dataByPage).length} pages`);
+  }
+
+  _organizeDataByPage(extractedData) {
+    const dataByPage = {};
+    extractedData.forEach((item) => {
+      const pageNumber = this._extractPageNumber(item);
+      if (!dataByPage[pageNumber]) {
+        dataByPage[pageNumber] = [];
+      }
+      dataByPage[pageNumber].push(item);
+    });
+    return dataByPage;
+  }
+
+  _getValuesForKeyword(pageData, keyword) {
+    const values = [];
+    pageData.forEach(item => {
+      const extractionClass = item.extraction_class || item.type || '';
+      // Correspondances entre keywords et extraction classes
+      if (this._keywordMatchesExtraction(keyword, extractionClass)) {
+        const text = item.text || item.extraction_text || '';
+        if (text && !values.includes(text)) {
+          values.push(text);
+        }
+      }
+    });
+    return values;
+  }
+
+  _keywordMatchesExtraction(keyword, extractionClass) {
+    const mappings = {
+      'nom': ['nom', 'client_name', 'name'],
+      'prénom': ['prénom', 'prenom', 'first_name'],
+      'civilité': ['civilité', 'civilite', 'title', 'civility'],
+      'code': ['code', 'mailing_code', 'reference', 'identifier'],
+      'email': ['email', 'mail'],
+      'téléphone': ['téléphone', 'telephone', 'phone'],
+      'date': ['date'],
+      'montant': ['montant', 'amount', 'prix', 'price'],
+      'adresse': ['adresse', 'address']
+    };
+    
+    const possibleClasses = mappings[keyword.toLowerCase()] || [keyword.toLowerCase()];
+    return possibleClasses.some(cls => extractionClass.toLowerCase().includes(cls));
+  }
+
+  _getKeywordIcon(keyword) {
+    const icons = {
+      'nom': '👤',
+      'prénom': '👤',
+      'civilité': '👔',
+      'code': '🏷️',
+      'email': '📧',
+      'téléphone': '📞',
+      'date': '📅',
+      'montant': '💰',
+      'adresse': '🏠'
+    };
+    return icons[keyword.toLowerCase()] || '📋';
+  }
+
+  _getKeywordDisplayName(keyword) {
+    const displayNames = {
+      'nom': 'Nom',
+      'prénom': 'Prénom',
+      'civilité': 'Civilité',
+      'code': 'Code',
+      'email': 'Email',
+      'téléphone': 'Téléphone',
+      'date': 'Date',
+      'montant': 'Montant',
+      'adresse': 'Adresse'
+    };
+    return displayNames[keyword.toLowerCase()] || keyword;
   }
 
   _extractPageNumber(item) {

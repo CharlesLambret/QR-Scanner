@@ -36,14 +36,12 @@ class QRCodePDFScanner:
         pdf_path: str,
         timeout: int = 10,
         search_texts: Optional[List[str]] = None,
-        extract_text: bool = False,
         out_dir: Optional[str] = None,
         log_level: str = "INFO",
         progress_callback: Optional[Callable[[str], None]] = None,
         expected_domains: Optional[List[str]] = None,
         expected_utm_params: Optional[Dict[str, str]] = None,
-        landing_page_texts: Optional[List[str]] = None,
-        unstructured_data_query: Optional[str] = None
+        ai_extraction_options: Optional[Dict[str, Any]] = None
     ):
         print(f"🏗️ SCANNER: __init__ appelé avec pdf_path={pdf_path}")
         print(f"🏗️ SCANNER: progress_callback présent={progress_callback is not None}")
@@ -52,8 +50,7 @@ class QRCodePDFScanner:
         self.task = PDFTask(
             pdf_path=pdf_path, 
             timeout=timeout, 
-            search_texts=search_texts, 
-            extract_text=extract_text
+            search_texts=search_texts
         )
         self.out_dir = out_dir or os.path.dirname(pdf_path)
         self.logger = LoggerShim(level=log_level)
@@ -62,13 +59,12 @@ class QRCodePDFScanner:
         # Initialisation des modules spécialisés
         self._init_modules(
             expected_domains, expected_utm_params, 
-            landing_page_texts, unstructured_data_query
+            ai_extraction_options
         )
         
         print(f"🏗️ SCANNER: Scanner refactorisé initialisé avec succès")
-    
-    def _init_modules(self, expected_domains, expected_utm_params, 
-                     landing_page_texts, unstructured_data_query):
+
+    def _init_modules(self, expected_domains, expected_utm_params, ai_extraction_options):
         """Initialise tous les modules spécialisés"""
         
         # Détecteur QR
@@ -79,7 +75,6 @@ class QRCodePDFScanner:
             timeout=self.task.timeout,
             expected_domains=expected_domains,
             expected_utm_params=expected_utm_params,
-            landing_page_texts=landing_page_texts,
             log_callback=self.safe_log
         )
         
@@ -91,8 +86,8 @@ class QRCodePDFScanner:
         
         # Extracteur IA (si demandé)
         self.ai_extractor = None
-        self.unstructured_data_query = unstructured_data_query
-        if unstructured_data_query:
+        self.ai_extraction_options = ai_extraction_options
+        if ai_extraction_options:
             self.ai_extractor = AIDataExtractor()
     
     def safe_log(self, level: str, msg: str):
@@ -145,8 +140,8 @@ class QRCodePDFScanner:
         all_ai_extractions = []
         pages_with_qr = 0
         
-        # Traitement CSV si extraction de texte demandée
-        csv_writer_info = self._setup_csv_export() if self.task.extract_text else None
+        # Plus besoin d'extraction de texte CSV
+        csv_writer_info = None
         
         try:
             # Traitement page par page
@@ -205,22 +200,8 @@ class QRCodePDFScanner:
         qr_results = self._process_qr_codes(page, page_number)
         results["qr_results"] = qr_results
         
-        # 2. Extraction de texte (pages impaires seulement si activé)
-        if self.task.extract_text:
-            print(f"📝 SCANNER: Extraction texte page {page_number}")
-            text_extractions = self.text_extractor.extract_from_page(page, page_number)
-            results["text_extractions"] = text_extractions
-            
-            # Écriture CSV si configuré
-            if csv_writer_info and text_extractions:
-                for extraction in text_extractions:
-                    csv_writer_info["writer"].writerow([
-                        extraction["page"], 
-                        extraction["line"]
-                    ])
-        
-        # 3. Extraction IA (si configurée)
-        if self.ai_extractor and self.unstructured_data_query:
+        # 2. Extraction IA (si configurée)
+        if self.ai_extractor and self.ai_extraction_options:
             print(f"🤖 SCANNER: Extraction IA pour page {page_number}")
             ai_extractions = self._process_ai_extraction(page, page_number)
             results["ai_extractions"] = ai_extractions
@@ -275,7 +256,7 @@ class QRCodePDFScanner:
         if not page_text.strip():
             return []
         
-        ai_result = self.ai_extractor.extract_data(page_text, self.unstructured_data_query)
+        ai_result = self.ai_extractor.extract_data(page_text, self.ai_extraction_options)
         
         if not (ai_result and ai_result.get('success') and ai_result.get('extracted_data')):
             return []
@@ -373,9 +354,9 @@ class QRCodePDFScanner:
             ai_extraction_results = {
                 "success": True,
                 "extracted_data": all_ai_extractions,
-                "query": self.unstructured_data_query,
+                "query": self.ai_extraction_options.get('query') if self.ai_extraction_options and 'query' in self.ai_extraction_options else None,
                 "total_extractions": len(all_ai_extractions),
-                "model_used": "gemini-2.5-flash via LangExtract (page par page)"
+                "model_used": "gemini-2.5-flash "
             }
             print(f"🤖 SCANNER: Total extractions IA: {len(all_ai_extractions)}")
         

@@ -79,7 +79,6 @@ def _extract_scan_options_from_form(form_data) -> ScanOptions:
     """
     # Options de base
     timeout = int(form_data.get("timeout", 10))
-    extract_text = form_data.get("extract_text") == "on"
     
     # Textes de recherche
     search_texts_raw = form_data.get("search_texts", "")
@@ -88,27 +87,35 @@ def _extract_scan_options_from_form(form_data) -> ScanOptions:
     # Validation avancée des URLs
     expected_domains = _parse_domains(form_data.get("expected_domains", ""))
     expected_utm_params = _parse_utm_params(form_data.get("expected_utm_params", ""))
-    landing_page_texts = _parse_landing_page_texts(form_data.get("landing_page_texts", ""))
     
-    # Requête d'extraction IA
-    unstructured_data_query = form_data.get("unstructured_data_query", "").strip() or None
+    # Extraction IA - Keywords et options
+    extraction_keywords = form_data.getlist("extraction_keywords")  # Liste des mots-clés cochés
+    search_code_length = int(form_data.get("search_code_length", 5))
+    result_code_length = int(form_data.get("result_code_length", 4))
+    
+    # Construire les options d'extraction IA
+    ai_extraction_options = None
+    if extraction_keywords:
+        ai_extraction_options = {
+            'keywords': extraction_keywords,
+            'search_code_length': search_code_length,
+            'result_code_length': result_code_length
+        }
     
     # Log des options extraites
-    print(f"⚙️ WEB: Options de base - timeout: {timeout}, extract_text: {extract_text}")
+    print(f"⚙️ WEB: Options de base - timeout: {timeout}")
     print(f"⚙️ WEB: Recherche - textes: {search_texts}")
     print(f"⚙️ WEB: Validation - domaines: {expected_domains}")
     print(f"⚙️ WEB: Validation - UTM: {expected_utm_params}")
-    print(f"⚙️ WEB: Validation - textes page: {landing_page_texts}")
-    print(f"⚙️ WEB: IA - requête: {unstructured_data_query}")
+    print(f"⚙️ WEB: IA - keywords: {extraction_keywords}")
+    print(f"⚙️ WEB: IA - longueurs code: {search_code_length}→{result_code_length}")
 
     return ScanOptions(
         timeout=timeout,
         search_texts=search_texts,
-        extract_text=extract_text,
         expected_domains=expected_domains,
         expected_utm_params=expected_utm_params,
-        landing_page_texts=landing_page_texts,
-        unstructured_data_query=unstructured_data_query
+        ai_extraction_options=ai_extraction_options
     )
 
 
@@ -132,12 +139,6 @@ def _parse_utm_params(utm_str: str) -> dict:
     
     return params if params else None
 
-
-def _parse_landing_page_texts(texts_str: str) -> list:
-    """Parse la chaîne de textes de page de destination"""
-    if not texts_str:
-        return None
-    return [t.strip() for t in texts_str.split(";") if t.strip()]
 
 
 @bp.errorhandler(413)
