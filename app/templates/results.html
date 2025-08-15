@@ -27,6 +27,23 @@
   <tbody></tbody>
 </table>
 
+<!-- Extractions IA (si activées) -->
+<div id="ai-extractions" class="hidden mb-6">
+  <h3 class="text-lg font-semibold mb-2">Données extraites par IA :</h3>
+  <div id="ai-query" class="text-sm text-gray-600 mb-2"></div>
+  <table id="ai-results-table" class="w-full table-auto border-collapse border border-gray-300">
+    <thead class="bg-purple-100">
+      <tr>
+        <th class="border px-4 py-2">#</th>
+        <th class="border px-4 py-2">Type</th>
+        <th class="border px-4 py-2">Données</th>
+        <th class="border px-4 py-2">Brut</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
 <!-- Extractions de texte (si activées) -->
 <div id="extractions" class="hidden">
   <h3 class="text-lg font-semibold mb-2">Extractions de texte (pages impaires) :</h3>
@@ -80,6 +97,7 @@
           <li>Pages avec QR codes : ${stats.pages_with_qr}</li>
           <li>URLs uniques trouvées : ${stats.unique_urls}</li>
           <li>Lignes de texte extraites : ${stats.extracted_lines}</li>
+          ${stats.ai_extracted_items !== undefined ? `<li>Données IA extraites : ${stats.ai_extracted_items}</li>` : ''}
         `;
         statsDiv.classList.remove("hidden");
         console.log("📈 Statistiques affichées");
@@ -143,6 +161,55 @@
         noResultsDiv.className = "bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4";
         noResultsDiv.innerText = "Aucun QR code avec URL détecté dans ce PDF.";
         document.getElementById("stats").after(noResultsDiv);
+      }
+      
+      // Afficher les extractions IA si disponibles
+      console.log("🤖 Traitement des extractions IA...");
+      const aiExtraction = data.results.ai_extraction;
+      console.log("🤖 AI Extraction:", aiExtraction);
+      
+      if (aiExtraction && aiExtraction.success && aiExtraction.extracted_data && aiExtraction.extracted_data.length > 0) {
+        console.log("🤖 Affichage des extractions IA");
+        const aiExtractionsDiv = document.getElementById("ai-extractions");
+        const aiQueryDiv = document.getElementById("ai-query");
+        const aiTableBody = document.querySelector("#ai-results-table tbody");
+        
+        // Afficher la requête
+        aiQueryDiv.innerHTML = `<strong>Requête :</strong> ${aiExtraction.query || 'Non spécifiée'}`;
+        
+        // Populer le tableau
+        aiTableBody.innerHTML = "";
+        aiExtraction.extracted_data.forEach((item, index) => {
+          const tr = document.createElement("tr");
+          
+          let dataDisplay = "";
+          if (item.type === "structured" && item.data) {
+            dataDisplay = Object.entries(item.data)
+              .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+              .join("<br>");
+          } else {
+            dataDisplay = item.value || "";
+          }
+          
+          tr.innerHTML = `
+            <td class="border px-2 py-1 text-center">${item.id}</td>
+            <td class="border px-2 py-1 text-center">
+              <span class="px-2 py-1 rounded text-xs ${item.type === 'structured' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                ${item.type === 'structured' ? 'Structuré' : 'Simple'}
+              </span>
+            </td>
+            <td class="border px-2 py-1">${dataDisplay}</td>
+            <td class="border px-2 py-1 text-xs text-gray-600 max-w-xs truncate">${item.raw}</td>
+          `;
+          aiTableBody.appendChild(tr);
+        });
+        
+        aiExtractionsDiv.classList.remove("hidden");
+        console.log("🤖 Extractions IA affichées");
+      } else if (aiExtraction && !aiExtraction.success) {
+        console.log("❌ Erreur d'extraction IA:", aiExtraction.error);
+      } else {
+        console.log("🤖 Aucune extraction IA");
       }
       
       // Afficher les extractions si disponibles

@@ -9,6 +9,7 @@ from urllib.parse import urlparse, parse_qs
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from .models import PDFTask
+from ..services.ai_extraction import AIDataExtractor
 
 # pyzbar (blindé)
 from pyzbar.pyzbar import decode as zbar_decode, ZBarSymbol
@@ -41,7 +42,8 @@ class QRCodePDFScanner:
         progress_callback=None,
         expected_domains: Optional[List[str]] = None,
         expected_utm_params: Optional[Dict[str, str]] = None,
-        landing_page_texts: Optional[List[str]] = None
+        landing_page_texts: Optional[List[str]] = None,
+        unstructured_data_query: Optional[str] = None
     ):
         print(f"🏗️ SCANNER: __init__ appelé avec pdf_path={pdf_path}")
         print(f"🏗️ SCANNER: progress_callback présent={progress_callback is not None}")
@@ -53,6 +55,10 @@ class QRCodePDFScanner:
         self.expected_domains = expected_domains
         self.expected_utm_params = expected_utm_params
         self.landing_page_texts = landing_page_texts
+        self.unstructured_data_query = unstructured_data_query
+        
+        # Initialize AI extractor if needed
+        self.ai_extractor = AIDataExtractor() if unstructured_data_query else None
         
         print(f"🏗️ SCANNER: Scanner initialisé avec success")
 
@@ -287,6 +293,26 @@ class QRCodePDFScanner:
                 uniq_url_rows.append(r)
                 seen.add(key)
 
+        # AI-based data extraction if requested
+        ai_extraction_results = None
+        if self.unstructured_data_query and self.ai_extractor:
+            print(f"🤖 SCANNER: Début de l'extraction IA")
+            self.progress_callback("Extraction de données avec IA...")
+            
+            # Collect all text from the PDF for AI processing
+            full_text = ""
+            doc = fitz.open(self.task.pdf_path)  # Reopen for text extraction
+            try:
+                for page_num in range(len(doc)):
+                    page = doc[page_num]
+                    full_text += page.get_text("text") + "\n"
+            finally:
+                doc.close()
+            
+            print(f"🤖 SCANNER: Texte extrait ({len(full_text)} caractères), envoi à l'IA")
+            ai_extraction_results = self.ai_extractor.extract_data(full_text, self.unstructured_data_query)
+            print(f"🤖 SCANNER: Extraction IA terminée: {ai_extraction_results.get('success', False)}")
+
         print(f"📊 SCANNER: Création des résultats finaux")
         results: Dict[str, Any] = {
             "stats": {
@@ -294,10 +320,12 @@ class QRCodePDFScanner:
                 "pages_with_qr": pages_with_qr,
                 "unique_urls": len({r["url"] for r in uniq_url_rows}),
                 "extracted_lines": len(extractions),
+                "ai_extracted_items": len(ai_extraction_results.get("extracted_data", [])) if ai_extraction_results else 0,
             },
             "url_results": uniq_url_rows,
             "extractions": extractions,
             "csv_filename": csv_filename if csv_filename else None,
+            "ai_extraction": ai_extraction_results,
         }
         
         print(f"📊 SCANNER: Résultats finaux créés:")

@@ -84,8 +84,11 @@ def scan():
     landing_page_texts_raw = request.form.get("landing_page_texts", "")
     landing_page_texts = [t.strip() for t in landing_page_texts_raw.split(";") if t.strip()] if landing_page_texts_raw else None
     
+    unstructured_data_query = request.form.get("unstructured_data_query", "").strip() or None
+    
     print(f"⚙️ WEB: Options - timeout: {timeout}, extract_text: {extract_text}")
     print(f"⚙️ WEB: Validation - domains: {expected_domains}, utm: {expected_utm_params}, texts: {landing_page_texts}")
+    print(f"⚙️ WEB: AI Extraction - query: {unstructured_data_query}")
 
     options = ScanOptions(
         timeout=timeout, 
@@ -93,7 +96,8 @@ def scan():
         extract_text=extract_text,
         expected_domains=expected_domains,
         expected_utm_params=expected_utm_params,
-        landing_page_texts=landing_page_texts
+        landing_page_texts=landing_page_texts,
+        unstructured_data_query=unstructured_data_query
     )
 
     def ws_progress(msg):

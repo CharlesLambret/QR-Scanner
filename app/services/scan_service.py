@@ -14,6 +14,7 @@ class ScanOptions:
     expected_domains: Optional[List[str]] = None
     expected_utm_params: Optional[Dict[str, str]] = None
     landing_page_texts: Optional[List[str]] = None
+    unstructured_data_query: Optional[str] = None
 
 def save_upload(file_storage) -> (str, str):
     # Validation simple
@@ -78,7 +79,8 @@ def scan_file(pdf_path: str, options: ScanOptions, scan_id: str = None,
             progress_callback=log_progress,
             expected_domains=options.expected_domains,
             expected_utm_params=options.expected_utm_params,
-            landing_page_texts=options.landing_page_texts
+            landing_page_texts=options.landing_page_texts,
+            unstructured_data_query=options.unstructured_data_query
         )
         
         print(f"🔍 SERVICE: Début du scan PDF")

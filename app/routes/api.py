@@ -29,6 +29,8 @@ def api_scan():
     
     landing_page_texts_raw = request.form.get("landing_page_texts", "")
     landing_page_texts = [t.strip() for t in landing_page_texts_raw.split(";") if t.strip()] if landing_page_texts_raw else None
+    
+    unstructured_data_query = request.form.get("unstructured_data_query", "").strip() or None
 
     pdf_path, scan_id = save_upload(f)
     try:
@@ -38,7 +40,8 @@ def api_scan():
             extract_text=extract_text,
             expected_domains=expected_domains,
             expected_utm_params=expected_utm_params,
-            landing_page_texts=landing_page_texts
+            landing_page_texts=landing_page_texts,
+            unstructured_data_query=unstructured_data_query
         )
         results = scan_file(pdf_path, opts, scan_id=scan_id)
         results["scan_id"] = scan_id
