@@ -222,6 +222,7 @@ class QRCodePDFScanner:
         total_pages = len(doc)
         url_rows: List[Dict[str, Any]] = []
         extractions: List[Dict[str, Any]] = []
+        ai_extractions_all: List[Dict[str, Any]] = []  # Toutes les extractions IA avec page
         pages_with_qr = 0
         
         print(f"📖 SCANNER: PDF ouvert, {total_pages} pages à traiter")
@@ -239,44 +240,62 @@ class QRCodePDFScanner:
 
         try:
             for i in range(total_pages):
-                print(f"📄 SCANNER: Traitement page {i + 1}/{total_pages}")
-                self.progress_callback(f"Lecture page {i + 1}/{len(doc)}")
+                current_page = i + 1
+                print(f"📄 SCANNER: Traitement page {current_page}/{total_pages}")
+                self.progress_callback(f"Lecture page {current_page}/{len(doc)}")
 
                 page = doc[i]
-                # Render -> image
-                print(f"🖼️ SCANNER: Conversion page {i + 1} en image")
+                
+                # Render -> image pour QR
+                print(f"🖼️ SCANNER: Conversion page {current_page} en image")
                 img = self._page_to_image(page, zoom=2.0)
 
-                # QR
-                print(f"🔍 SCANNER: Détection QR codes page {i + 1}")
+                # QR detection
+                print(f"🔍 SCANNER: Détection QR codes page {current_page}")
                 qr_values = self.detect_qr_codes(img)
-                print(f"🔍 SCANNER: QR codes trouvés page {i + 1}: {qr_values}")
+                print(f"🔍 SCANNER: QR codes trouvés page {current_page}: {qr_values}")
                 
                 if qr_values:
                     pages_with_qr += 1
                     for val in qr_values:
                         print(f"🔗 SCANNER: Analyse URL: {val}")
-                        # heuristique URL
                         if val.startswith(("http://", "https://")):
                             print(f"🌐 SCANNER: Test HTTP pour URL: {val}")
                             row = self._http_check(val)
-                            row["page"] = i + 1
+                            row["page"] = current_page
                             url_rows.append(row)
                             print(f"🌐 SCANNER: Résultat HTTP: {row}")
 
+                # AI extraction pour cette page spécifique
+                if self.unstructured_data_query and self.ai_extractor:
+                    print(f"🤖 SCANNER: Extraction IA pour page {current_page}")
+                    page_text = page.get_text("text")
+                    if page_text.strip():  # Seulement si la page contient du texte
+                        ai_result = self.ai_extractor.extract_data(page_text, self.unstructured_data_query)
+                        if ai_result and ai_result.get('success') and ai_result.get('extracted_data'):
+                            for extraction in ai_result['extracted_data']:
+                                # Ajouter le numéro de page à chaque extraction
+                                extraction['page'] = current_page
+                                if not extraction.get('attributes'):
+                                    extraction['attributes'] = {}
+                                extraction['attributes']['page'] = current_page
+                                ai_extractions_all.append(extraction)
+                            print(f"🤖 SCANNER: {len(ai_result['extracted_data'])} extractions IA trouvées page {current_page}")
+
                 # Text extraction on odd pages (1-indexed: 1,3,5…)
-                if self.task.extract_text and ((i + 1) % 2 == 1):
-                    print(f"📝 SCANNER: Extraction texte page {i + 1}")
+                if self.task.extract_text and (current_page % 2 == 1):
+                    print(f"📝 SCANNER: Extraction texte page {current_page}")
                     lines = self._extract_text_linewise(page)
                     for ln in lines:
-                        record = {"page": i + 1, "line": ln}
+                        record = {"page": current_page, "line": ln}
                         extractions.append(record)
                         if csv_writer:
                             csv_writer.writerow([record["page"], record["line"]])
                 
-                # Ajout du callback à la fin du scan de la page
-                print(f"📢 SCANNER: Envoi message fin page {i + 1}")
-                self.progress_callback(f"Page {i + 1} scannée")
+                # Callback fin de page
+                print(f"📢 SCANNER: Envoi message fin page {current_page}")
+                self.progress_callback(f"Page {current_page} scannée")
+                
         finally:
             if self.task.extract_text and csv_writer:
                 csv_fh.close()
@@ -293,25 +312,17 @@ class QRCodePDFScanner:
                 uniq_url_rows.append(r)
                 seen.add(key)
 
-        # AI-based data extraction if requested
+        # Préparer les résultats d'extraction IA
         ai_extraction_results = None
-        if self.unstructured_data_query and self.ai_extractor:
-            print(f"🤖 SCANNER: Début de l'extraction IA")
-            self.progress_callback("Extraction de données avec IA...")
-            
-            # Collect all text from the PDF for AI processing
-            full_text = ""
-            doc = fitz.open(self.task.pdf_path)  # Reopen for text extraction
-            try:
-                for page_num in range(len(doc)):
-                    page = doc[page_num]
-                    full_text += page.get_text("text") + "\n"
-            finally:
-                doc.close()
-            
-            print(f"🤖 SCANNER: Texte extrait ({len(full_text)} caractères), envoi à l'IA")
-            ai_extraction_results = self.ai_extractor.extract_data(full_text, self.unstructured_data_query)
-            print(f"🤖 SCANNER: Extraction IA terminée: {ai_extraction_results.get('success', False)}")
+        if ai_extractions_all:
+            ai_extraction_results = {
+                "success": True,
+                "extracted_data": ai_extractions_all,
+                "query": self.unstructured_data_query,
+                "total_extractions": len(ai_extractions_all),
+                "model_used": "gemini-2.5-flash via LangExtract (page par page)"
+            }
+            print(f"🤖 SCANNER: Total extractions IA: {len(ai_extractions_all)}")
 
         print(f"📊 SCANNER: Création des résultats finaux")
         results: Dict[str, Any] = {
@@ -320,7 +331,7 @@ class QRCodePDFScanner:
                 "pages_with_qr": pages_with_qr,
                 "unique_urls": len({r["url"] for r in uniq_url_rows}),
                 "extracted_lines": len(extractions),
-                "ai_extracted_items": len(ai_extraction_results.get("extracted_data", [])) if ai_extraction_results else 0,
+                "ai_extracted_items": len(ai_extractions_all),
             },
             "url_results": uniq_url_rows,
             "extractions": extractions,
@@ -334,5 +345,6 @@ class QRCodePDFScanner:
         print(f"📊 SCANNER: - URLs uniques: {results['stats']['unique_urls']}")
         print(f"📊 SCANNER: - URLs trouvées: {len(uniq_url_rows)}")
         print(f"📊 SCANNER: - Extractions: {len(extractions)}")
+        print(f"📊 SCANNER: - Extractions IA: {len(ai_extractions_all)}")
         
         return results

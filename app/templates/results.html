@@ -247,11 +247,14 @@
       
       // Extraire le numéro de page depuis les attributs ou la position
       let pageNumber = 'N/A';
-      if (item.attributes && item.attributes.page) {
+      if (item.page) {
+        pageNumber = item.page;
+      } else if (item.attributes && item.attributes.page) {
         pageNumber = item.attributes.page;
       } else if (item.source_location && item.source_location.page) {
         pageNumber = item.source_location.page;
       }
+      console.log(`🤖 Extraction ${item.id}: page=${pageNumber}, text="${item.text}"`);
       
       tr.innerHTML = `
         <td class="border-b border-purple-100 px-3 py-2 text-center font-medium">${item.id}</td>
@@ -300,12 +303,22 @@
     
     // Ajouter les extractions IA
     if (aiExtraction && aiExtraction.success && aiExtraction.extracted_data) {
+      console.log("📑 Traitement des extractions IA pour section par page...");
       aiExtraction.extracted_data.forEach(item => {
         let pageNumber = 'unknown';
-        if (item.attributes && item.attributes.page) {
+        
+        // Vérifier plusieurs sources pour le numéro de page
+        if (item.page) {
+          pageNumber = item.page;
+          console.log(`📑 Page trouvée directement: ${pageNumber} pour extraction "${item.text}"`);
+        } else if (item.attributes && item.attributes.page) {
           pageNumber = item.attributes.page;
+          console.log(`📑 Page trouvée dans attributs: ${pageNumber} pour extraction "${item.text}"`);
         } else if (item.source_location && item.source_location.page) {
           pageNumber = item.source_location.page;
+          console.log(`📑 Page trouvée dans source_location: ${pageNumber} pour extraction "${item.text}"`);
+        } else {
+          console.log(`📑 ❌ Aucune page trouvée pour extraction "${item.text}" - attributs:`, item.attributes, "source_location:", item.source_location);
         }
         
         if (pageNumber !== 'unknown') {
@@ -313,8 +326,12 @@
             pageData[pageNumber] = { qrCodes: [], aiExtractions: [] };
           }
           pageData[pageNumber].aiExtractions.push(item);
+          console.log(`📑 ✅ Extraction ajoutée à la page ${pageNumber}`);
+        } else {
+          console.log(`📑 ❌ Extraction ignorée (pas de page): "${item.text}"`);
         }
       });
+      console.log(`📑 Total pages avec données:`, Object.keys(pageData));
     }
     
     // Si aucune donnée, ne pas afficher la section
