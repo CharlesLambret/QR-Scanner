@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement depuis le fichier .env
+load_dotenv()
 
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
@@ -7,3 +11,7 @@ class Config:
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     THREADS = int(os.getenv("THREADS", 4))
     TIMEOUT_DEFAULT = int(os.getenv("TIMEOUT_DEFAULT", 10))
+    
+    # Configuration pour l'extraction IA
+    LANGEXTRACT_API_KEY = os.getenv("LANGEXTRACT_API_KEY")
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")

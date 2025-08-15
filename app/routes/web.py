@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, current_app
 from flask_socketio import emit
 from ..services.scan_service import save_upload, scan_file, ScanOptions, cleanup_pdf_files
 from .. import socketio
@@ -15,26 +15,30 @@ def handle_client_ready(data):
         scan_data = socketio.pending_scans[scan_id]
         print(f"🚀 SOCKET: Démarrage du scan pour scan_id={scan_id}")
         
+        # Capturer l'app dans le contexte actuel
+        app = current_app._get_current_object()
+        
         def start_scan():
-            try:
-                results = scan_file(
-                    scan_data['pdf_path'], 
-                    scan_data['options'], 
-                    scan_id=scan_id, 
-                    progress_callback=scan_data['ws_progress']
-                )
-                print(f"✅ SOCKET: scan_file terminé pour scan_id={scan_id}")
-                
-                socketio.emit("scan_complete", {"scan_id": scan_id, "results": results})
-                print(f"📢 SOCKET: scan_complete envoyé pour scan_id={scan_id}")
-                
-                # Nettoyer les données temporaires
-                del socketio.pending_scans[scan_id]
-            except Exception as e:
-                print(f"❌ SOCKET: Erreur pendant le scan {scan_id}: {e}")
-                # En cas d'erreur, s'assurer que le fichier PDF est supprimé
-                cleanup_pdf_files(scan_data['pdf_path'], scan_id)
-                socketio.emit("scan_error", {"scan_id": scan_id, "error": str(e)})
+            with app.app_context():
+                try:
+                    results = scan_file(
+                        scan_data['pdf_path'], 
+                        scan_data['options'], 
+                        scan_id=scan_id, 
+                        progress_callback=scan_data['ws_progress']
+                    )
+                    print(f"✅ SOCKET: scan_file terminé pour scan_id={scan_id}")
+                    
+                    socketio.emit("scan_complete", {"scan_id": scan_id, "results": results})
+                    print(f"📢 SOCKET: scan_complete envoyé pour scan_id={scan_id}")
+                    
+                    # Nettoyer les données temporaires
+                    del socketio.pending_scans[scan_id]
+                except Exception as e:
+                    print(f"❌ SOCKET: Erreur pendant le scan {scan_id}: {e}")
+                    # En cas d'erreur, s'assurer que le fichier PDF est supprimé
+                    cleanup_pdf_files(scan_data['pdf_path'], scan_id)
+                    socketio.emit("scan_error", {"scan_id": scan_id, "error": str(e)})
         
         socketio.start_background_task(start_scan)
     else:

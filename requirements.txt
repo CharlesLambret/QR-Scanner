@@ -8,4 +8,4 @@ requests>=2.32
 flask-socketio>=5.3
 python-socketio[client]>=5.11
 eventlet>=0.33
-google-generativeai>=0.7.0
+langextract>=0.1.0
