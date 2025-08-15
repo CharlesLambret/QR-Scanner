@@ -1,0 +1,239 @@
+/* Styles personnalisés pour les composants QR Scanner */
+
+/* Animations et transitions */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.slide-in {
+  animation: slideIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(-10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Composant de progression */
+#progress-section {
+  transition: all 0.3s ease;
+}
+
+#progress {
+  border-left: 4px solid #3b82f6;
+  animation: pulse 2s infinite;
+}
+
+#progress.error {
+  border-left: 4px solid #ef4444;
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% { border-left-color: #3b82f6; }
+  50% { border-left-color: #60a5fa; }
+}
+
+/* Tableaux responsifs */
+.table-container {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+#results-table {
+  min-width: 800px;
+}
+
+#ai-results-table {
+  min-width: 600px;
+}
+
+/* Cartes par page */
+.page-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.page-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Badges et indicateurs */
+.validation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.validation-badge.valid {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.validation-badge.invalid {
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+.validation-badge.untested {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+/* Sections IA */
+.ai-section {
+  background: linear-gradient(135deg, #f3e8ff 0%, #dbeafe 100%);
+  border: 2px solid #c084fc;
+}
+
+.ai-extraction-item {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.ai-extraction-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateX(2px);
+}
+
+/* Formulaire avancé */
+details[open] summary {
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+details summary {
+  transition: all 0.2s ease;
+}
+
+details summary:hover {
+  color: #374151;
+}
+
+/* Loading states */
+.loading {
+  position: relative;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #f3f4f6;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Notifications */
+.form-notification {
+  animation: slideIn 0.3s ease-out;
+}
+
+.form-notification.removing {
+  animation: fadeOut 0.3s ease-in;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .table-container {
+    margin: 0 -1rem;
+    border-radius: 0;
+  }
+  
+  .page-card {
+    min-width: 100%;
+  }
+  
+  #by-page-content {
+    flex-direction: column;
+  }
+  
+  .ai-extraction-item {
+    padding: 0.75rem;
+  }
+}
+
+/* Dark mode support (optionnel) */
+@media (prefers-color-scheme: dark) {
+  .ai-section {
+    background: linear-gradient(135deg, #1e1b4b 0%, #1e3a8a 100%);
+  }
+  
+  .ai-extraction-item {
+    background: rgba(0, 0, 0, 0.3);
+    color: #f3f4f6;
+  }
+  
+  .validation-badge.valid {
+    background-color: #14532d;
+    color: #dcfce7;
+  }
+  
+  .validation-badge.invalid {
+    background-color: #7f1d1d;
+    color: #fef2f2;
+  }
+}
+
+/* Utilitaires */
+.break-all {
+  word-break: break-all;
+}
+
+.truncate-url {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Focus states pour l'accessibilité */
+button:focus,
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* États de survol pour les liens */
+a:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}

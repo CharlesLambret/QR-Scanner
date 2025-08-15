@@ -1,0 +1,49 @@
+<!-- Composant : Formulaire de scan -->
+<form method="post" action="/scan" enctype="multipart/form-data" class="bg-white shadow rounded p-6 space-y-4 w-1/2 mx-auto" id="scan-form">
+  <div>
+    <label class="block text-sm font-medium mb-1">PDF à scanner</label>
+    <input class="block w-full border rounded p-2" type="file" name="pdf" accept="application/pdf" required>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium mb-1">Timeout (s)</label>
+    <input class="w-full border rounded p-2" type="number" name="timeout" min="1" value="10">
+  </div>
+
+  <!-- Section Validation URL Avancée -->
+  <details class="bg-gray-50 border rounded p-4">
+    <summary class="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
+      🔍 Validation d'URL Avancée (Optionnel)
+    </summary>
+    <div class="mt-4 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Textes à rechercher</label>
+        <input class="w-full border rounded p-2" type="text" name="search_texts" placeholder="ex: promo;qrcode;offre">
+        <p class="text-xs text-gray-500 mt-1">Séparez les textes par des points-virgules.</p>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Domaines autorisés</label>
+        <input class="w-full border rounded p-2" type="text" name="expected_domains" placeholder="example.com,mysite.org">
+        <p class="text-xs text-gray-500 mt-1">Séparez les domaines par des virgules.</p>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Paramètres UTM attendus</label>
+        <input class="w-full border rounded p-2" type="text" name="expected_utm_params" placeholder="utm_source=email;utm_campaign=promo">
+        <p class="text-xs text-gray-500 mt-1">Format: clé=valeur;clé2=valeur2.</p>
+      </div>
+      
+    <!-- Le champ 'Textes de page de destination' a été supprimé car il doublonnait 'Textes à rechercher' -->
+    </div>
+  </details>
+
+  <!-- Section Extraction IA -->
+  {% include 'components/ai-form-section.html' %}
+
+  <div class="pt-2">
+    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition-colors">
+      🚀 Scanner le PDF
+    </button>
+  </div>
+</form>

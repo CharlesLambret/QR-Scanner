@@ -1,480 +1,86 @@
 {% extends "layout.html" %}
 {% block content %}
-<div id="progress" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-  En attente du démarrage du scan...
-</div>
-
-<!-- Statistiques -->
-<div id="stats" class="w-full hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-  <h3 class="font-semibold">📊 Statistiques du scan :</h3>
-  <ul id="stats-list" class="list-disc list-inside mt-2"></ul>
-</div>
-
-<!-- Tableau des résultats QR -->
-<div id="qr-results-section" class="hidden mb-6">
-  <h3 class="text-lg font-semibold mb-3 text-gray-800">🔗 QR Codes détectés</h3>
-  <table id="results-table" class="w-full table-auto border-collapse border border-gray-300">
-    <thead class="bg-gray-100">
-      <tr>
-        <th class="border px-4 py-2">Page</th>
-        <th class="border px-4 py-2">URL</th>
-        <th class="border px-4 py-2">Status HTTP</th>
-        <th class="border px-4 py-2">Validation Domaine</th>
-        <th class="border px-4 py-2">Validation UTM</th>
-        <th class="border px-4 py-2">Validation Texte</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
-
-<!-- Extractions IA avec LangExtract (Design amélioré) -->
-<div id="ai-extractions" class="hidden mb-6">
-  <div class="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-4">
-    <h3 class="text-xl font-bold mb-3 text-purple-800 flex items-center gap-2">
-      ✨ Données extraites par l'IA
-      <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-normal">LangExtract</span>
-    </h3>
-    
-    <!-- Requête utilisateur -->
-    <div id="ai-query" class="bg-white border border-purple-200 rounded p-3 mb-4">
-      <h4 class="font-medium text-purple-700 mb-1">🎯 Votre requête :</h4>
-      <div id="ai-query-text" class="text-gray-700 italic"></div>
-    </div>
-    
-    <!-- Métadonnées de l'extraction -->
-    <div id="ai-metadata" class="bg-purple-100 border border-purple-300 rounded p-3 mb-4 hidden">
-      <div class="grid md:grid-cols-3 gap-4 text-sm">
-        <div>
-          <span class="font-medium text-purple-800">🔢 Total extractions :</span>
-          <span id="ai-total-extractions" class="text-purple-700"></span>
-        </div>
-        <div>
-          <span class="font-medium text-purple-800">🤖 Modèle utilisé :</span>
-          <span id="ai-model-used" class="text-purple-700"></span>
-        </div>
-        <div>
-          <span class="font-medium text-purple-800">⚡ Statut :</span>
-          <span id="ai-status" class="text-green-600 font-medium">✅ Succès</span>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Tableau des résultats -->
-    <div class="bg-white border border-purple-200 rounded-lg overflow-hidden">
-      <table id="ai-results-table" class="w-full table-auto border-collapse">
-        <thead class="bg-purple-100">
-          <tr>
-            <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">#</th>
-            <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">Type/Classe</th>
-            <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">Texte Extrait</th>
-            <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">Page</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+  <!-- Section de progression -->
+  <div id="progress-section">
+    <div id="progress" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4 w-1/3 mx-auto">
+      En attente du démarrage du scan...
     </div>
   </div>
-</div>
-
-<!-- Extractions de texte (si activées) -->
-<div id="extractions" class="hidden mb-6">
-  <h3 class="text-lg font-semibold mb-3 text-gray-800">📝 Extractions de texte (pages impaires)</h3>
-  <div id="extractions-content" class="bg-gray-100 border rounded p-4 max-h-64 overflow-y-auto"></div>
-</div>
-
-<!-- Section Par Page -->
-<div id="by-page-section" class="hidden mb-6">
-  <h3 class="text-xl font-bold mb-4 text-gray-800">📑 Résultats par Page</h3>
-  <div id="by-page-content" class="flex flex-wrap gap-4"></div>
-</div>
-
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<script>
-  const scanId = "{{ scan_id }}";
-  console.log("🔍 Script démarré, scanId:", scanId);
   
-  const socket = io();
-  console.log("🔌 Socket.IO instance créée");
+  <!-- Section par page -->
+  {% include 'components/by-page-section.html' %}
+{% endblock %}
 
-  socket.on("scan_progress", data => {
-    console.log("📊 Event scan_progress reçu:", data);
-    if (data.scan_id === scanId) {
-      console.log("✅ scan_progress: mise à jour du message:", data.message);
-      document.getElementById("progress").innerText = data.message;
-    }
-  });
-
-  socket.on("scan_complete", data => {
-    console.log("🎉 Event scan_complete reçu:", data);
-    if (data.scan_id === scanId) {
-      console.log("✅ scan_complete: traitement des résultats...");
-      
-      // Cacher le message de progression
-      document.getElementById("progress").style.display = "none";
-      
-      // Afficher les statistiques
-      displayStats(data.results.stats);
-      
-      // Afficher les résultats QR
-      displayQRResults(data.results.url_results || []);
-      
-      // Afficher les extractions IA avec LangExtract
-      displayAIExtractions(data.results.ai_extraction);
-      
-      // Afficher les extractions de texte
-      displayTextExtractions(data.results.extractions || []);
-      
-      // Afficher la section par page
-      displayByPageSection(data.results.url_results || [], data.results.ai_extraction);
-      
-      // Message de fin
-      showSuccessMessage();
-    }
-  });
-
-  socket.on("scan_error", data => {
-    console.log("❌ Event scan_error reçu:", data);
-    if (data.scan_id === scanId) {
-      document.getElementById("progress").innerHTML = `
-        <span class="text-red-600">❌ Erreur pendant le scan: ${data.error}</span>
-      `;
-      document.getElementById("progress").className = "bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4";
-    }
-  });
-
-  function displayStats(stats) {
-    if (!stats) return;
+{% block scripts %}
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/static/js/services/socket-service.js"></script>
+  <script src="/static/js/components/progress-tracker.js"></script>
+  <script src="/static/js/components/results-display.js"></script>
+  <script>
+    // Configuration globale
+    window.SCAN_CONFIG = {
+      scanId: "{{ scan_id }}",
+      socketUrl: window.location.origin
+    };
     
-    const statsDiv = document.getElementById("stats");
-    const statsList = document.getElementById("stats-list");
-    
-    statsList.innerHTML = `
-      <li>Pages totales : <strong>${stats.total_pages}</strong></li>
-      <li>Pages avec QR codes : <strong>${stats.pages_with_qr}</strong></li>
-      <li>URLs uniques trouvées : <strong>${stats.unique_urls}</strong></li>
-      <li>Lignes de texte extraites : <strong>${stats.extracted_lines}</strong></li>
-      ${stats.ai_extracted_items !== undefined ? `<li>Données IA extraites : <strong>${stats.ai_extracted_items}</strong></li>` : ''}
-    `;
-    statsDiv.classList.remove("hidden");
-  }
-
-  function displayQRResults(urlResults) {
-    if (urlResults.length === 0) {
-      showNoQRMessage();
-      return;
-    }
-
-    console.log("🔗 Affichage du tableau des QR codes");
-    const section = document.getElementById("qr-results-section");
-    const tbody = document.querySelector("#results-table tbody");
-    
-    section.classList.remove("hidden");
-    
-    urlResults.forEach((result, index) => {
-      const tr = document.createElement("tr");
+    // Initialisation de l'application
+    document.addEventListener('DOMContentLoaded', function() {
+      const socketService = new SocketService(window.SCAN_CONFIG.scanId);
+      const progressTracker = new ProgressTracker();
+      const resultsDisplay = new ResultsDisplay();
       
-      const getValidationStatus = (validationResult) => {
-        if (validationResult === null || validationResult === undefined) {
-          return '<span class="text-gray-500">Non testé</span>';
-        } else if (validationResult === true) {
-          return '<span class="text-green-600 font-semibold">✓ Valide</span>';
-        } else {
-          return '<span class="text-red-600 font-semibold">✗ Invalide</span>';
-        }
-      };
+      // Configuration des événements
+      socketService.onProgress((data) => progressTracker.updateProgress(data.message));
+      socketService.onComplete((data) => {
+        progressTracker.hideProgress();
+        resultsDisplay.displayByPageSection(data.results.url_results || [], data.results.ai_extraction);
+        resultsDisplay.showSuccessMessage();
         
-      tr.innerHTML = `
-        <td class="border px-4 py-2">${result.page}</td>
-        <td class="border px-4 py-2">
-          <a href="${result.url}" target="_blank" class="text-blue-600 hover:underline" title="${result.url}">
-            ${result.url.length > 50 ? result.url.substring(0, 50) + '...' : result.url}
-          </a>
-        </td>
-        <td class="border px-4 py-2">
-          <span class="${result.http_status === 200 ? 'text-green-600' : 'text-red-600'}">
-            ${result.http_status || 'N/A'}
-          </span>
-        </td>
-        <td class="border px-4 py-2 text-sm">${getValidationStatus(result.domain_valid)}</td>
-        <td class="border px-4 py-2 text-sm">${getValidationStatus(result.utm_valid)}</td>
-        <td class="border px-4 py-2 text-sm">${getValidationStatus(result.text_search_valid)}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  function displayAIExtractions(aiExtraction) {
-    console.log("🤖 Traitement des extractions IA...", aiExtraction);
-    
-    if (!aiExtraction || !aiExtraction.success) {
-      if (aiExtraction && aiExtraction.error) {
-        showAIError(aiExtraction.error);
-      }
-      return;
-    }
-
-    if (!aiExtraction.extracted_data || aiExtraction.extracted_data.length === 0) {
-      showNoAIExtractions();
-      return;
-    }
-
-    console.log("🤖 Affichage des extractions IA");
-    const aiExtractionsDiv = document.getElementById("ai-extractions");
-    const aiQueryText = document.getElementById("ai-query-text");
-    const aiMetadata = document.getElementById("ai-metadata");
-    const aiTableBody = document.querySelector("#ai-results-table tbody");
-    
-    // Afficher la requête
-    aiQueryText.textContent = aiExtraction.query || 'Non spécifiée';
-    
-    // Afficher les métadonnées si disponibles
-    if (aiExtraction.total_extractions !== undefined) {
-      document.getElementById("ai-total-extractions").textContent = aiExtraction.total_extractions;
-      document.getElementById("ai-model-used").textContent = aiExtraction.model_used || 'gemini-2.5-flash';
-      aiMetadata.classList.remove("hidden");
-    }
-    
-    // Populer le tableau
-    aiTableBody.innerHTML = "";
-    aiExtraction.extracted_data.forEach((item, index) => {
-      const tr = document.createElement("tr");
-      tr.className = index % 2 === 0 ? "bg-white" : "bg-purple-25";
-      
-      // Badge pour le type/classe
-      const typeClass = item.extraction_class || item.type || 'unknown';
-      const typeBadge = `<span class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded font-medium">${typeClass}</span>`;
-      
-      // Extraire le numéro de page depuis les attributs ou la position
-      let pageNumber = 'N/A';
-      if (item.page) {
-        pageNumber = item.page;
-      } else if (item.attributes && item.attributes.page) {
-        pageNumber = item.attributes.page;
-      } else if (item.source_location && item.source_location.page) {
-        pageNumber = item.source_location.page;
-      }
-      console.log(`🤖 Extraction ${item.id}: page=${pageNumber}, text="${item.text}"`);
-      
-      tr.innerHTML = `
-        <td class="border-b border-purple-100 px-3 py-2 text-center font-medium">${item.id}</td>
-        <td class="border-b border-purple-100 px-3 py-2">${typeBadge}</td>
-        <td class="border-b border-purple-100 px-3 py-2">
-          <span class="font-medium text-gray-800">${escapeHtml(item.text || item.extraction_text || '')}</span>
-        </td>
-        <td class="border-b border-purple-100 px-3 py-2 text-center">
-          <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">${pageNumber}</span>
-        </td>
-      `;
-      aiTableBody.appendChild(tr);
-    });
-    
-    aiExtractionsDiv.classList.remove("hidden");
-    console.log("🤖 Extractions IA affichées");
-  }
-
-  function displayTextExtractions(extractions) {
-    if (extractions.length === 0) return;
-    
-    console.log("📝 Affichage des extractions de texte");
-    const extractionsDiv = document.getElementById("extractions");
-    const extractionsContent = document.getElementById("extractions-content");
-    
-    extractionsContent.innerHTML = extractions
-      .map(ext => `<div class="mb-1"><strong>Page ${ext.page}:</strong> ${escapeHtml(ext.line)}</div>`)
-      .join("");
-    
-    extractionsDiv.classList.remove("hidden");
-  }
-
-  function displayByPageSection(urlResults, aiExtraction) {
-    console.log("📑 Création de la section par page...");
-    
-    // Organiser les données par page
-    const pageData = {};
-    
-    // Ajouter les QR codes
-    urlResults.forEach(result => {
-      if (!pageData[result.page]) {
-        pageData[result.page] = { qrCodes: [], aiExtractions: [] };
-      }
-      pageData[result.page].qrCodes.push(result);
-    });
-    
-    // Ajouter les extractions IA
-    if (aiExtraction && aiExtraction.success && aiExtraction.extracted_data) {
-      console.log("📑 Traitement des extractions IA pour section par page...");
-      aiExtraction.extracted_data.forEach(item => {
-        let pageNumber = 'unknown';
-        
-        // Vérifier plusieurs sources pour le numéro de page
-        if (item.page) {
-          pageNumber = item.page;
-          console.log(`📑 Page trouvée directement: ${pageNumber} pour extraction "${item.text}"`);
-        } else if (item.attributes && item.attributes.page) {
-          pageNumber = item.attributes.page;
-          console.log(`📑 Page trouvée dans attributs: ${pageNumber} pour extraction "${item.text}"`);
-        } else if (item.source_location && item.source_location.page) {
-          pageNumber = item.source_location.page;
-          console.log(`📑 Page trouvée dans source_location: ${pageNumber} pour extraction "${item.text}"`);
-        } else {
-          console.log(`📑 ❌ Aucune page trouvée pour extraction "${item.text}" - attributs:`, item.attributes, "source_location:", item.source_location);
-        }
-        
-        if (pageNumber !== 'unknown') {
-          if (!pageData[pageNumber]) {
-            pageData[pageNumber] = { qrCodes: [], aiExtractions: [] };
-          }
-          pageData[pageNumber].aiExtractions.push(item);
-          console.log(`📑 ✅ Extraction ajoutée à la page ${pageNumber}`);
-        } else {
-          console.log(`📑 ❌ Extraction ignorée (pas de page): "${item.text}"`);
-        }
+        // Afficher le bouton de téléchargement CSV
+        showCSVDownloadButton();
       });
-      console.log(`📑 Total pages avec données:`, Object.keys(pageData));
-    }
-    
-    // Si aucune donnée, ne pas afficher la section
-    if (Object.keys(pageData).length === 0) {
-      return;
-    }
-    
-    const byPageSection = document.getElementById("by-page-section");
-    const byPageContent = document.getElementById("by-page-content");
-    
-    byPageContent.innerHTML = "";
-    
-    // Créer les cartes pour chaque page
-    Object.keys(pageData).sort((a, b) => parseInt(a) - parseInt(b)).forEach(pageNum => {
-      const data = pageData[pageNum];
-      const card = document.createElement("div");
-      card.className = "bg-white border-2 border-gray-200 rounded-lg p-4 min-w-80 flex-shrink-0";
+      socketService.onError((data) => progressTracker.showError(data.error));
       
-      let cardContent = `
-        <h4 class="text-lg font-bold mb-3 text-gray-800 border-b pb-2">
-          📄 Page ${pageNum}
-        </h4>
-      `;
-      
-      // Ajouter les QR codes
-      if (data.qrCodes.length > 0) {
-        cardContent += `<div class="mb-4">
-          <h5 class="font-semibold text-blue-800 mb-2 flex items-center gap-1">
-            🔗 QR Code${data.qrCodes.length > 1 ? 's' : ''}
-          </h5>`;
-        
-        data.qrCodes.forEach(qr => {
-          const getValidationIcon = (valid) => {
-            if (valid === true) return '✅';
-            if (valid === false) return '❌';
-            return '❓';
-          };
-          
-          cardContent += `
-            <div class="bg-blue-50 border border-blue-200 rounded p-3 mb-2">
-              <div class="mb-2">
-                <a href="${qr.url}" target="_blank" class="text-blue-600 hover:underline font-medium break-all">
-                  ${qr.url}
-                </a>
-              </div>
-              <div class="text-sm space-y-1">
-                <div><strong>Status HTTP:</strong> 
-                  <span class="${qr.http_status === 200 ? 'text-green-600' : 'text-red-600'}">
-                    ${qr.http_status || 'N/A'}
-                  </span>
-                </div>
-                <div class="flex gap-4 text-xs">
-                  <span>Domaine: ${getValidationIcon(qr.domain_valid)}</span>
-                  <span>UTM: ${getValidationIcon(qr.utm_valid)}</span>
-                  <span>Texte: ${getValidationIcon(qr.text_search_valid)}</span>
-                </div>
-              </div>
-            </div>
-          `;
-        });
-        cardContent += `</div>`;
-      }
-      
-      // Ajouter les extractions IA
-      if (data.aiExtractions.length > 0) {
-        cardContent += `<div>
-          <h5 class="font-semibold text-purple-800 mb-2 flex items-center gap-1">
-            ✨ Extractions IA
-          </h5>`;
-        
-        data.aiExtractions.forEach(extraction => {
-          const typeClass = extraction.extraction_class || extraction.type || 'unknown';
-          cardContent += `
-            <div class="bg-purple-50 border border-purple-200 rounded p-2 mb-2">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded font-medium">
-                  ${typeClass}
-                </span>
-              </div>
-              <div class="font-medium text-gray-800">
-                ${escapeHtml(extraction.text || extraction.extraction_text || '')}
-              </div>
-            </div>
-          `;
-        });
-        cardContent += `</div>`;
-      }
-      
-      card.innerHTML = cardContent;
-      byPageContent.appendChild(card);
+      // Démarrage
+      socketService.connect();
     });
     
-    byPageSection.classList.remove("hidden");
-    console.log("📑 Section par page affichée");
-  }
-
-  function showNoQRMessage() {
-    const noResultsDiv = document.createElement("div");
-    noResultsDiv.className = "bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4";
-    noResultsDiv.innerHTML = "⚠️ Aucun QR code avec URL détecté dans ce PDF.";
-    document.getElementById("stats").after(noResultsDiv);
-  }
-
-  function showNoAIExtractions() {
-    const aiExtractionsDiv = document.getElementById("ai-extractions");
-    aiExtractionsDiv.innerHTML = `
-      <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-        ⚠️ Aucune donnée correspondant à votre requête n'a été trouvée dans le PDF.
-      </div>
-    `;
-    aiExtractionsDiv.classList.remove("hidden");
-  }
-
-  function showAIError(error) {
-    const aiExtractionsDiv = document.getElementById("ai-extractions");
-    aiExtractionsDiv.innerHTML = `
-      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-        ❌ Erreur lors de l'extraction IA: ${escapeHtml(error)}
-      </div>
-    `;
-    aiExtractionsDiv.classList.remove("hidden");
-  }
-
-  function showSuccessMessage() {
-    const successDiv = document.createElement("div");
-    successDiv.className = "bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mt-4";
-    successDiv.innerHTML = "✅ Scan terminé avec succès !";
-    document.querySelector("main").appendChild(successDiv);
-  }
-
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  socket.on("connect", () => {
-    console.log("🔌 Socket.IO connecté avec succès");
-    socket.emit("client_ready", { scan_id: scanId });
-  });
-
-  socket.on("disconnect", () => {
-    console.log("🔌 Socket.IO déconnecté");
-  });
-</script>
+    // Fonction pour afficher le bouton de téléchargement CSV
+    function showCSVDownloadButton() {
+      const headerActions = document.getElementById('header-actions');
+      const downloadBtn = document.getElementById('download-csv-btn');
+      
+      if (headerActions && downloadBtn) {
+        headerActions.classList.remove('hidden');
+        
+        // Ajouter l'événement de clic
+        downloadBtn.addEventListener('click', function() {
+          downloadCSV();
+        });
+      }
+    }
+    
+    // Fonction pour télécharger le CSV
+    function downloadCSV() {
+      const scanId = window.SCAN_CONFIG.scanId;
+      
+      if (!scanId) {
+        alert('Erreur: Identifiant de scan non trouvé');
+        return;
+      }
+      
+      // Créer un lien de téléchargement et le déclencher
+      const downloadUrl = `/export-csv/${scanId}`;
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = '';
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log(`📄 CSV download initiated for scan_id: ${scanId}`);
+    }
+  </script>
 {% endblock %}

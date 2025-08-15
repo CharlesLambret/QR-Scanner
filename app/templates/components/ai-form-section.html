@@ -1,0 +1,158 @@
+<!-- Composant : Section IA du formulaire avec cases à cocher -->
+<details class="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-4">
+  <summary class="cursor-pointer font-medium text-purple-800 hover:text-purple-900 flex items-center gap-2">
+    ✨ Extraire des données structurées avec l'IA ✨
+    <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-normal">Powered by LangExtract</span>
+  </summary>
+  
+  <div class="mt-4 space-y-4">
+    <!-- Instructions -->
+    <div class="bg-white border border-purple-200 rounded p-3">
+      <h4 class="font-medium text-purple-800 mb-2">🎯 Sélectionnez les informations à extraire</h4>
+      <p class="text-sm text-purple-600">Cochez les cases correspondant aux données que vous souhaitez récupérer du PDF.</p>
+    </div>
+    
+    <!-- Grille des options -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Noms/Prénoms -->
+      <label class="flex items-start gap-3 bg-white border-2 border-purple-200 rounded-lg p-3 hover:border-purple-300 cursor-pointer transition-colors">
+        <input type="checkbox" name="extraction_keywords" value="nom" class="mt-1 h-4 w-4 text-purple-600">
+        <div class="flex-1">
+          <div class="font-medium text-purple-800">👤 Noms</div>
+          <div class="text-xs text-purple-600">Noms, prénoms, identités</div>
+        </div>
+      </label>
+      
+      <!-- Civilités -->
+      <label class="flex items-start gap-3 bg-white border-2 border-purple-200 rounded-lg p-3 hover:border-purple-300 cursor-pointer transition-colors">
+        <input type="checkbox" name="extraction_keywords" value="civilité" class="mt-1 h-4 w-4 text-purple-600">
+        <div class="flex-1">
+          <div class="font-medium text-purple-800">🎩 Civilité</div>
+          <div class="text-xs text-purple-600">MR, MME, MR ET MME</div>
+        </div>
+      </label>
+      
+      <!-- Codes -->
+      <label class="flex items-start gap-3 bg-white border-2 border-purple-200 rounded-lg p-3 hover:border-purple-300 cursor-pointer transition-colors">
+        <input type="checkbox" name="extraction_keywords" value="code" class="mt-1 h-4 w-4 text-purple-600" id="code-checkbox">
+        <div class="flex-1">
+          <div class="font-medium text-purple-800">🏷️ Codes</div>
+          <div class="text-xs text-purple-600">Codes de référence, identifiants</div>
+        </div>
+      </label>
+      
+      <!-- Email -->
+      <label class="flex items-start gap-3 bg-white border-2 border-purple-200 rounded-lg p-3 hover:border-purple-300 cursor-pointer transition-colors">
+        <input type="checkbox" name="extraction_keywords" value="email" class="mt-1 h-4 w-4 text-purple-600">
+        <div class="flex-1">
+          <div class="font-medium text-purple-800">📧 Email</div>
+          <div class="text-xs text-purple-600">Adresses électroniques</div>
+        </div>
+      </label>
+      
+      <!-- Téléphone -->
+      <label class="flex items-start gap-3 bg-white border-2 border-purple-200 rounded-lg p-3 hover:border-purple-300 cursor-pointer transition-colors">
+        <input type="checkbox" name="extraction_keywords" value="téléphone" class="mt-1 h-4 w-4 text-purple-600">
+        <div class="flex-1">
+          <div class="font-medium text-purple-800">📞 Téléphone</div>
+          <div class="text-xs text-purple-600">Numéros de téléphone</div>
+        </div>
+      </label>
+      
+      <!-- Dates -->
+      <label class="flex items-start gap-3 bg-white border-2 border-purple-200 rounded-lg p-3 hover:border-purple-300 cursor-pointer transition-colors">
+        <input type="checkbox" name="extraction_keywords" value="date" class="mt-1 h-4 w-4 text-purple-600">
+        <div class="flex-1">
+          <div class="font-medium text-purple-800">📅 Dates</div>
+          <div class="text-xs text-purple-600">Dates, échéances</div>
+        </div>
+      </label>
+      
+      <!-- Montants -->
+      <label class="flex items-start gap-3 bg-white border-2 border-purple-200 rounded-lg p-3 hover:border-purple-300 cursor-pointer transition-colors">
+        <input type="checkbox" name="extraction_keywords" value="montant" class="mt-1 h-4 w-4 text-purple-600">
+        <div class="flex-1">
+          <div class="font-medium text-purple-800">💰 Montants</div>
+          <div class="text-xs text-purple-600">Prix, sommes, valeurs</div>
+        </div>
+      </label>
+      
+      <!-- Adresses -->
+      <label class="flex items-start gap-3 bg-white border-2 border-purple-200 rounded-lg p-3 hover:border-purple-300 cursor-pointer transition-colors">
+        <input type="checkbox" name="extraction_keywords" value="adresse" class="mt-1 h-4 w-4 text-purple-600">
+        <div class="flex-1">
+          <div class="font-medium text-purple-800">🏠 Adresses</div>
+          <div class="text-xs text-purple-600">Adresses postales</div>
+        </div>
+      </label>
+    </div>
+    
+    <!-- Options spéciales pour les codes -->
+    <div id="code-options" class="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 hidden">
+      <h5 class="font-medium text-yellow-800 mb-3">⚙️ Configuration des codes</h5>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-yellow-700 mb-1">Longueur du code recherché</label>
+          <input class="w-full border-2 border-yellow-300 rounded-lg p-2 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100" 
+                 type="number" 
+                 name="search_code_length" 
+                 min="1" 
+                 max="20" 
+                 value="5"
+                 placeholder="ex: 5 pour XNBAI">
+          <p class="text-xs text-yellow-600 mt-1">Longueur attendue du code complet dans le PDF</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-yellow-700 mb-1">Longueur du code à extraire</label>
+          <input class="w-full border-2 border-yellow-300 rounded-lg p-2 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100" 
+                 type="number" 
+                 name="result_code_length" 
+                 min="1" 
+                 max="20" 
+                 value="4"
+                 placeholder="ex: 4 pour XNBA">
+          <p class="text-xs text-yellow-600 mt-1">Nombre de caractères à extraire du début du code</p>
+        </div>
+      </div>
+      <div class="mt-3 bg-yellow-100 border border-yellow-300 rounded p-2">
+        <p class="text-xs text-yellow-700">
+          <strong>Exemple :</strong> Si votre PDF contient "XNBAI2024" et que vous configurez 5→4, 
+          l'IA recherchera des codes de 5 caractères et extraira les 4 premiers : "XNBA"
+        </p>
+      </div>
+    </div>
+    
+    <!-- Comment ça marche -->
+    <div class="bg-purple-100 border border-purple-300 rounded p-3">
+      <h5 class="font-medium text-purple-800 mb-2">🔧 Comment ça marche</h5>
+      <ol class="text-sm text-purple-700 space-y-1 list-decimal list-inside">
+        <li>Sélectionnez les types de données à extraire</li>
+        <li>L'IA analyse intelligemment le contenu du PDF</li>
+        <li>Elle extrait uniquement les données sélectionnées</li>
+        <li>Les résultats sont affichés dans un tableau organisé</li>
+        <li>Chaque extraction indique sa position dans le document</li>
+      </ol>
+    </div>
+  </div>
+</details>
+
+<script>
+// Afficher/masquer les options de code
+document.addEventListener('DOMContentLoaded', function() {
+  const codeCheckbox = document.getElementById('code-checkbox');
+  const codeOptions = document.getElementById('code-options');
+  
+  if (codeCheckbox && codeOptions) {
+    function toggleCodeOptions() {
+      if (codeCheckbox.checked) {
+        codeOptions.classList.remove('hidden');
+      } else {
+        codeOptions.classList.add('hidden');
+      }
+    }
+    
+    codeCheckbox.addEventListener('change', toggleCodeOptions);
+    toggleCodeOptions(); // Initial state
+  }
+});
+</script>

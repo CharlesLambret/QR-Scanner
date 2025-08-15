@@ -1,0 +1,25 @@
+<!-- Composant : Tableau des résultats QR -->
+<div id="qr-results-section" class="hidden mb-6">
+  <h3 class="text-lg font-semibold mb-3 text-gray-800">🔗 QR Codes détectés</h3>
+  <div class="overflow-x-auto">
+    <table id="results-table" class="w-full table-auto border-collapse border border-gray-300">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="border px-4 py-2">Page</th>
+          <th class="border px-4 py-2">URL</th>
+          <th class="border px-4 py-2">Status HTTP</th>
+          <th class="border px-4 py-2">Validation Domaine</th>
+          <th class="border px-4 py-2">Validation UTM</th>
+          <th class="border px-4 py-2">Validation Texte</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section des extractions de texte -->
+<div id="extractions" class="hidden mb-6">
+  <h3 class="text-lg font-semibold mb-3 text-gray-800">📝 Extractions de texte (pages impaires)</h3>
+  <div id="extractions-content" class="bg-gray-100 border rounded p-4 max-h-64 overflow-y-auto"></div>
+</div>
