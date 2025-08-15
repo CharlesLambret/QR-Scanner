@@ -1,0 +1,50 @@
+<!-- Composant : Résultats d'extraction IA -->
+<div id="ai-extractions" class="hidden mb-6">
+  <div class="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-4">
+    <h3 class="text-xl font-bold mb-3 text-purple-800 flex items-center gap-2">
+      ✨ Données extraites par l'IA
+      <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-normal">LangExtract</span>
+    </h3>
+    
+    <!-- Requête utilisateur -->
+    <div id="ai-query" class="bg-white border border-purple-200 rounded p-3 mb-4">
+      <h4 class="font-medium text-purple-700 mb-1">🎯 Votre requête :</h4>
+      <div id="ai-query-text" class="text-gray-700 italic"></div>
+    </div>
+    
+    <!-- Métadonnées -->
+    <div id="ai-metadata" class="bg-purple-100 border border-purple-300 rounded p-3 mb-4 hidden">
+      <div class="grid md:grid-cols-3 gap-4 text-sm">
+        <div>
+          <span class="font-medium text-purple-800">🔢 Total extractions :</span>
+          <span id="ai-total-extractions" class="text-purple-700"></span>
+        </div>
+        <div>
+          <span class="font-medium text-purple-800">🤖 Modèle utilisé :</span>
+          <span id="ai-model-used" class="text-purple-700"></span>
+        </div>
+        <div>
+          <span class="font-medium text-purple-800">⚡ Statut :</span>
+          <span id="ai-status" class="text-green-600 font-medium">✅ Succès</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tableau des résultats -->
+    <div class="bg-white border border-purple-200 rounded-lg overflow-hidden">
+      <div class="overflow-x-auto">
+        <table id="ai-results-table" class="w-full table-auto border-collapse">
+          <thead class="bg-purple-100">
+            <tr>
+              <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">#</th>
+              <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">Type/Classe</th>
+              <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">Texte Extrait</th>
+              <th class="border-b border-purple-200 px-3 py-2 text-left text-purple-800">Page</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

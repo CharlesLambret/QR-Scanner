@@ -1,102 +1,109 @@
-from flask import Blueprint, render_template, request, current_app
-from flask_socketio import emit
-from ..services.scan_service import save_upload, scan_file, ScanOptions, cleanup_pdf_files
-from .. import socketio
+"""
+Routes web refactorisées
+Gestion simplifiée des routes web utilisant les services modulaires
+"""
 import uuid
+from flask import Blueprint, render_template, request
+from ..services.file_service import FileService
+from ..services.websocket_service import WebSocketService
+from ..services.scan_service import ScanOptions
 
 bp = Blueprint("web", __name__)
 
-@socketio.on('client_ready')
-def handle_client_ready(data):
-    scan_id = data.get('scan_id')
-    print(f"🎯 SOCKET: Client prêt pour scan_id={scan_id}")
-    
-    if hasattr(socketio, 'pending_scans') and scan_id in socketio.pending_scans:
-        scan_data = socketio.pending_scans[scan_id]
-        print(f"🚀 SOCKET: Démarrage du scan pour scan_id={scan_id}")
-        
-        # Capturer l'app dans le contexte actuel
-        app = current_app._get_current_object()
-        
-        def start_scan():
-            with app.app_context():
-                try:
-                    results = scan_file(
-                        scan_data['pdf_path'], 
-                        scan_data['options'], 
-                        scan_id=scan_id, 
-                        progress_callback=scan_data['ws_progress']
-                    )
-                    print(f"✅ SOCKET: scan_file terminé pour scan_id={scan_id}")
-                    
-                    socketio.emit("scan_complete", {"scan_id": scan_id, "results": results})
-                    print(f"📢 SOCKET: scan_complete envoyé pour scan_id={scan_id}")
-                    
-                    # Nettoyer les données temporaires
-                    del socketio.pending_scans[scan_id]
-                except Exception as e:
-                    print(f"❌ SOCKET: Erreur pendant le scan {scan_id}: {e}")
-                    # En cas d'erreur, s'assurer que le fichier PDF est supprimé
-                    cleanup_pdf_files(scan_data['pdf_path'], scan_id)
-                    socketio.emit("scan_error", {"scan_id": scan_id, "error": str(e)})
-        
-        socketio.start_background_task(start_scan)
-    else:
-        print(f"❌ SOCKET: Aucune donnée de scan trouvée pour scan_id={scan_id}")
-
-@socketio.on('test_message')
-def handle_test_message(data):
-    print(f"🧪 SOCKET: Message de test reçu: {data}")
-    emit('test_response', {'message': 'Test reçu par le serveur'})
 
 @bp.get("/")
 def index():
+    """Page d'accueil avec formulaire de scan"""
     return render_template("index.html")
+
 
 @bp.post("/scan")
 def scan():
+    """
+    Endpoint de scan web avec WebSocket
+    Démarre le processus de scan en arrière-plan
+    """
     print(f"🌐 WEB: Requête POST /scan reçue")
     
-    f = request.files.get("pdf")
-    if not f:
+    # Validation du fichier
+    uploaded_file = request.files.get("pdf")
+    if not uploaded_file:
         print(f"❌ WEB: Aucun fichier fourni")
         return render_template("index.html", error="Aucun fichier fourni")
 
-    scan_id = str(uuid.uuid4())
-    print(f"🆔 WEB: scan_id généré: {scan_id}")
-    
-    pdf_path, _ = save_upload(f)  # Unpack the tuple to get just the path
-    print(f"💾 WEB: Fichier sauvé: {pdf_path}")
+    try:
+        # Sauvegarde du fichier
+        scan_id = str(uuid.uuid4())
+        print(f"🆔 WEB: scan_id généré: {scan_id}")
+        
+        pdf_path, _ = FileService.save_upload(uploaded_file)
+        print(f"💾 WEB: Fichier sauvé: {pdf_path}")
 
-    timeout = int(request.form.get("timeout", 10))
-    extract_text = request.form.get("extract_text") == "on"
-    search_texts = request.form.get("search_texts", "").split(";") or None
-    
-    # Parse new validation fields
-    expected_domains_raw = request.form.get("expected_domains", "")
-    expected_domains = [d.strip() for d in expected_domains_raw.split(",") if d.strip()] if expected_domains_raw else None
-    
-    expected_utm_params_raw = request.form.get("expected_utm_params", "")
-    expected_utm_params = {}
-    if expected_utm_params_raw:
-        for param in expected_utm_params_raw.split(";"):
-            if "=" in param:
-                key, value = param.split("=", 1)
-                expected_utm_params[key.strip()] = value.strip()
-    expected_utm_params = expected_utm_params if expected_utm_params else None
-    
-    landing_page_texts_raw = request.form.get("landing_page_texts", "")
-    landing_page_texts = [t.strip() for t in landing_page_texts_raw.split(";") if t.strip()] if landing_page_texts_raw else None
-    
-    unstructured_data_query = request.form.get("unstructured_data_query", "").strip() or None
-    
-    print(f"⚙️ WEB: Options - timeout: {timeout}, extract_text: {extract_text}")
-    print(f"⚙️ WEB: Validation - domains: {expected_domains}, utm: {expected_utm_params}, texts: {landing_page_texts}")
-    print(f"⚙️ WEB: AI Extraction - query: {unstructured_data_query}")
+        # Extraction des options du formulaire
+        scan_options = _extract_scan_options_from_form(request.form)
+        print(f"⚙️ WEB: Options extraites: {scan_options}")
 
-    options = ScanOptions(
-        timeout=timeout, 
-        search_texts=search_texts, 
+        # Création du callback de progression WebSocket
+        progress_callback = WebSocketService.create_progress_callback(scan_id)
+
+        # Préparation des données de scan
+        scan_data = {
+            'pdf_path': pdf_path,
+            'options': scan_options,
+            'scan_id': scan_id,
+            'progress_callback': progress_callback
+        }
+
+        # Enregistrement du scan pour traitement différé
+        WebSocketService.register_scan(scan_id, scan_data)
+        print(f"📦 WEB: Données de scan enregistrées pour scan_id={scan_id}")
+
+        # Redirection vers la page de résultats
+        print(f"🎭 WEB: Rendu template results.html avec scan_id={scan_id}")
+        return render_template("results.html", scan_id=scan_id)
+
+    except Exception as e:
+        print(f"❌ WEB: Erreur lors du traitement: {e}")
+        return render_template("index.html", error=f"Erreur lors du traitement: {str(e)}")
+
+
+def _extract_scan_options_from_form(form_data) -> ScanOptions:
+    """
+    Extrait les options de scan depuis les données du formulaire
+    
+    Args:
+        form_data: Données du formulaire Flask
+        
+    Returns:
+        ScanOptions: Options de scan configurées
+    """
+    # Options de base
+    timeout = int(form_data.get("timeout", 10))
+    extract_text = form_data.get("extract_text") == "on"
+    
+    # Textes de recherche
+    search_texts_raw = form_data.get("search_texts", "")
+    search_texts = [s.strip() for s in search_texts_raw.split(";") if s.strip()] or None
+    
+    # Validation avancée des URLs
+    expected_domains = _parse_domains(form_data.get("expected_domains", ""))
+    expected_utm_params = _parse_utm_params(form_data.get("expected_utm_params", ""))
+    landing_page_texts = _parse_landing_page_texts(form_data.get("landing_page_texts", ""))
+    
+    # Requête d'extraction IA
+    unstructured_data_query = form_data.get("unstructured_data_query", "").strip() or None
+    
+    # Log des options extraites
+    print(f"⚙️ WEB: Options de base - timeout: {timeout}, extract_text: {extract_text}")
+    print(f"⚙️ WEB: Recherche - textes: {search_texts}")
+    print(f"⚙️ WEB: Validation - domaines: {expected_domains}")
+    print(f"⚙️ WEB: Validation - UTM: {expected_utm_params}")
+    print(f"⚙️ WEB: Validation - textes page: {landing_page_texts}")
+    print(f"⚙️ WEB: IA - requête: {unstructured_data_query}")
+
+    return ScanOptions(
+        timeout=timeout,
+        search_texts=search_texts,
         extract_text=extract_text,
         expected_domains=expected_domains,
         expected_utm_params=expected_utm_params,
@@ -104,25 +111,45 @@ def scan():
         unstructured_data_query=unstructured_data_query
     )
 
-    def ws_progress(msg):
-        print(f"📢 WEB: Envoi WebSocket scan_progress: scan_id={scan_id}, message='{msg}'")
-        socketio.emit("scan_progress", {"scan_id": scan_id, "message": msg})
 
-    print(f"🎭 WEB: Rendu template results.html avec scan_id={scan_id}")
+def _parse_domains(domains_str: str) -> list:
+    """Parse la chaîne de domaines attendus"""
+    if not domains_str:
+        return None
+    return [d.strip() for d in domains_str.split(",") if d.strip()]
+
+
+def _parse_utm_params(utm_str: str) -> dict:
+    """Parse la chaîne de paramètres UTM attendus"""
+    if not utm_str:
+        return None
     
-    # Stocker les informations du scan pour le traitement différé
-    scan_data = {
-        'pdf_path': pdf_path,
-        'options': options,
-        'scan_id': scan_id,
-        'ws_progress': ws_progress
-    }
+    params = {}
+    for param in utm_str.split(";"):
+        if "=" in param:
+            key, value = param.split("=", 1)
+            params[key.strip()] = value.strip()
     
-    # Stocker temporairement les données de scan (vous pourriez utiliser Redis en production)
-    if not hasattr(socketio, 'pending_scans'):
-        socketio.pending_scans = {}
-    socketio.pending_scans[scan_id] = scan_data
-    
-    print(f"📦 WEB: Données de scan stockées pour scan_id={scan_id}")
-    
-    return render_template("results.html", scan_id=scan_id)
+    return params if params else None
+
+
+def _parse_landing_page_texts(texts_str: str) -> list:
+    """Parse la chaîne de textes de page de destination"""
+    if not texts_str:
+        return None
+    return [t.strip() for t in texts_str.split(";") if t.strip()]
+
+
+@bp.errorhandler(413)
+def file_too_large(error):
+    """Gestionnaire d'erreur pour les fichiers trop volumineux"""
+    return render_template("index.html", 
+                         error="Fichier trop volumineux. Taille maximale autorisée: 50MB"), 413
+
+
+@bp.errorhandler(Exception)
+def handle_error(error):
+    """Gestionnaire d'erreur général pour les routes web"""
+    print(f"❌ WEB: Erreur non gérée: {error}")
+    return render_template("index.html", 
+                         error="Une erreur inattendue s'est produite"), 500

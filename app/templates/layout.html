@@ -6,6 +6,8 @@
   <title>QR PDF Scanner</title>
   <!-- Tailwind via CDN (MVP) -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- CSS personnalisé pour les composants -->
+  <link href="/static/css/components.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50">
   <header class="border-b bg-white">
@@ -16,6 +18,11 @@
   <main class="w-1/2 mx-auto p-6">
     {% block content %}{% endblock %}
   </main>
+  
+  <!-- Scripts globaux -->
   <script src="/static/js/app.js"></script>
+  
+  <!-- Scripts spécifiques à la page -->
+  {% block scripts %}{% endblock %}
 </body>
 </html>

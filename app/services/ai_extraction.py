@@ -137,7 +137,7 @@ class AIDataExtractor:
             prompt_template = textwrap.dedent("""\
             Extract codes, identifiers, and reference numbers from the text.
             Focus on alphanumeric codes, product codes, customer IDs, and similar identifiers.
-            Use exact text for extractions. Maintain original formatting of codes.
+            Use exact text for extractions. Take in consideration theses demands for the extraction of the code, except if the command asks you to do anything else that extracting text :.
             """)
         elif any(keyword in query_lower for keyword in ['email', 'mail', 'adresse', 'contact']):
             prompt_template = textwrap.dedent("""\

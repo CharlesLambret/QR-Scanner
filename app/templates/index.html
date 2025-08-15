@@ -4,122 +4,10 @@
     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{{ error }}</div>
   {% endif %}
 
-  <form method="post" action="/scan" enctype="multipart/form-data" class="bg-white shadow rounded p-6 space-y-4">
-    <div>
-      <label class="block text-sm font-medium mb-1">PDF à scanner</label>
-      <input class="block w-full border rounded p-2" type="file" name="pdf" accept="application/pdf" required>
-    </div>
+  <!-- Formulaire de scan -->
+  {% include 'components/scan-form.html' %}
 
-    <div>
-      <label class="block text-sm font-medium mb-1">Timeout (s)</label>
-      <input class="w-full border rounded p-2" type="number" name="timeout" min="1" value="10">
-    </div>
-
-    <label class="inline-flex items-center gap-2">
-      <input type="checkbox" name="extract_text" class="h-4 w-4">
-      <span>Extraire les lignes (pages impaires)</span>
-    </label>
-
-    <!-- Advanced URL Validation Section -->
-    <details class="bg-gray-50 border rounded p-4">
-      <summary class="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
-        🔍 Validation d'URL Avancée (Optionnel)
-      </summary>
-      <div class="mt-4 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Textes à rechercher</label>
-          <input class="w-full border rounded p-2" type="text" name="search_texts" placeholder="ex: promo;qrcode;offre">
-          <p class="text-xs text-gray-500 mt-1">Séparez les textes par des points-virgules. Laissez vide pour ignorer la recherche de texte.</p>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Domaines autorisés</label>
-          <input class="w-full border rounded p-2" type="text" name="expected_domains" placeholder="example.com,mysite.org">
-          <p class="text-xs text-gray-500 mt-1">Séparez les domaines par des virgules. Laissez vide pour ignorer la validation.</p>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Paramètres UTM attendus</label>
-          <input class="w-full border rounded p-2" type="text" name="expected_utm_params" placeholder="utm_source=email;utm_campaign=promo">
-          <p class="text-xs text-gray-500 mt-1">Format: clé=valeur;clé2=valeur2. Laissez vide pour ignorer la validation.</p>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Textes de page de destination</label>
-          <input class="w-full border rounded p-2" type="text" name="landing_page_texts" placeholder="Welcome;Special offer;Buy now">
-          <p class="text-xs text-gray-500 mt-1">Textes à rechercher sur les pages de destination. Séparez par des points-virgules.</p>
-        </div>
-      </div>
-    </details>
-
-    <!-- AI Data Extraction Section with LangExtract -->
-    <details class="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-4">
-      <summary class="cursor-pointer font-medium text-purple-800 hover:text-purple-900 flex items-center gap-2">
-        ✨ Rechercher du texte non structuré avec l'IA dans le PDF ✨
-        <span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-normal">Powered by LangExtract</span>
-      </summary>
-      <div class="mt-4 space-y-4">
-        <div class="bg-white border border-purple-200 rounded p-3">
-          <h4 class="font-medium text-purple-800 mb-2">🎯 Exemples de recherches</h4>
-          <div class="grid md:grid-cols-2 gap-3 text-sm">
-            <div class="bg-purple-50 p-2 rounded">
-              <strong>👥 Noms et Codes:</strong><br>
-              <em>"Je veux récupérer chaque Nom et Prénom des clients et leur Code  (format XNBAI mais extrait seulement XNBA)"</em>
-            </div>
-            <div class="bg-blue-50 p-2 rounded">
-              <strong>📧 Contacts:</strong><br>
-              <em>"Extraire toutes les adresses email et numéros de téléphone"</em>
-            </div>
-            <div class="bg-green-50 p-2 rounded">
-              <strong>💰 Montants:</strong><br>
-              <em>"Récupérer tous les prix, montants et valeurs financières"</em>
-            </div>
-            <div class="bg-yellow-50 p-2 rounded">
-              <strong>📅 Dates:</strong><br>
-              <em>"Extraire toutes les dates de commande et de livraison"</em>
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <label class="block text-sm font-medium text-purple-700 mb-1">🤖 Votre requête d'extraction</label>
-          <textarea 
-            class="w-full border-2 border-purple-200 rounded-lg p-3 h-32 resize-y focus:border-purple-400 focus:ring-2 focus:ring-purple-100" 
-            name="unstructured_data_query" 
-            placeholder="Décrivez précisément ce que vous voulez extraire du PDF...
-
-Exemple: 'Je veux que tu récupères chaque Nom et Prénom des clients dans le PDF et que tu y associes un Code Mailing (ils sont au format XNBAI mais tu dois extraire XNBA)'
-
-Autre exemple: 'Extraire tous les numéros de téléphone, adresses email et dates de naissance des contacts'"
-          ></textarea>
-          <div class="mt-2 text-xs text-purple-600 space-y-1">
-            <p><strong>💡 Conseil:</strong> Soyez précis dans votre demande pour de meilleurs résultats</p>
-            <p><strong>⚡ Technologie:</strong> Utilise Google LangExtract avec Gemini pour une extraction intelligente et précise</p>
-            <p><strong>🎯 Avantages:</strong> Localisation exacte dans le texte source, extraction structurée, haute précision</p>
-          </div>
-        </div>
-        
-        <div class="bg-purple-100 border border-purple-300 rounded p-3">
-          <h5 class="font-medium text-purple-800 mb-2">🔧 Comment ça marche</h5>
-          <ol class="text-sm text-purple-700 space-y-1 list-decimal list-inside">
-            <li>L'IA analyse intelligemment votre requête</li>
-            <li>Elle scanne tout le contenu du PDF</li>
-            <li>Elle extrait les données avec leur position exacte</li>
-            <li>Les résultats sont affichés dans un tableau dédié</li>
-            <li>Chaque extraction est liée à sa source dans le document</li>
-          </ol>
-        </div>
-      </div>
-    </details>
-
-    <div class="pt-2">
-      <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition-colors">
-        🚀 Scanner le PDF
-      </button>
-    </div>
-  </form>
-
-  <!-- Information section -->
+  <!-- Section d'information -->
   <div class="mt-6 bg-blue-50 border border-blue-200 rounded p-4">
     <h3 class="font-medium text-blue-800 mb-2">ℹ️ À propos de cette application</h3>
     <ul class="text-sm text-blue-700 space-y-1">
@@ -129,4 +17,8 @@ Autre exemple: 'Extraire tous les numéros de téléphone, adresses email et dat
       <li>• <strong>Temps réel:</strong> Suivi en direct du processus de scan</li>
     </ul>
   </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/js/components/form-handler.js"></script>
 {% endblock %}
