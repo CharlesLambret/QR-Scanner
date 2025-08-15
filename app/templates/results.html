@@ -5,13 +5,13 @@
 </div>
 
 <!-- Statistiques -->
-<div id="stats" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+<div id="stats" class="w-full  hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
   <h3 class="font-semibold">Statistiques du scan :</h3>
   <ul id="stats-list" class="list-disc list-inside mt-2"></ul>
 </div>
 
 <!-- Tableau des résultats -->
-<table id="results-table" class="hidden table-auto w-full border-collapse border border-gray-300 mb-6">
+<table id="results-table" class="w-full  hidden table-auto border-collapse border border-gray-300 mb-6">
   <thead class="bg-gray-100">
     <tr>
       <th class="border px-4 py-2">Page</th>
@@ -19,6 +19,9 @@
       <th class="border px-4 py-2">Domaine</th>
       <th class="border px-4 py-2">Status HTTP</th>
       <th class="border px-4 py-2">Paramètres UTM</th>
+      <th class="border px-4 py-2">Validation Domaine</th>
+      <th class="border px-4 py-2">Validation UTM</th>
+      <th class="border px-4 py-2">Validation Texte</th>
     </tr>
   </thead>
   <tbody></tbody>
@@ -100,6 +103,17 @@
           const utmText = result.utm ? 
             Object.entries(result.utm).map(([k,v]) => `${k}: ${v}`).join(", ") : 
             "Aucun";
+          
+          // Helper function to create validation status cell
+          const getValidationStatus = (validationResult) => {
+            if (validationResult === null || validationResult === undefined) {
+              return '<span class="text-gray-500">Non testé</span>';
+            } else if (validationResult === true) {
+              return '<span class="text-green-600 font-semibold">✓ Valide</span>';
+            } else {
+              return '<span class="text-red-600 font-semibold">✗ Invalide</span>';
+            }
+          };
             
           tr.innerHTML = `
             <td class="border px-4 py-2">${result.page}</td>
@@ -115,6 +129,9 @@
               </span>
             </td>
             <td class="border px-4 py-2 text-sm">${utmText}</td>
+            <td class="border px-4 py-2 text-sm">${getValidationStatus(result.domain_valid)}</td>
+            <td class="border px-4 py-2 text-sm">${getValidationStatus(result.utm_valid)}</td>
+            <td class="border px-4 py-2 text-sm">${getValidationStatus(result.text_search_valid)}</td>
           `;
           tbody.appendChild(tr);
         });

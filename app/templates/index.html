@@ -10,21 +10,43 @@
       <input class="block w-full border rounded p-2" type="file" name="pdf" accept="application/pdf" required>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Timeout (s)</label>
-        <input class="w-full border rounded p-2" type="number" name="timeout" min="1" value="10">
-      </div>
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium mb-1">Textes à rechercher (séparés par ";")</label>
-        <input class="w-full border rounded p-2" type="text" name="search_texts" placeholder="ex: promo;qrcode;offre">
-      </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Timeout (s)</label>
+      <input class="w-full border rounded p-2" type="number" name="timeout" min="1" value="10">
     </div>
 
     <label class="inline-flex items-center gap-2">
       <input type="checkbox" name="extract_text" class="h-4 w-4">
       <span>Extraire les lignes (pages impaires)</span>
     </label>
+
+    <!-- Advanced URL Validation Section -->
+    <details class="bg-gray-50 border rounded p-4">
+      <summary class="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
+        🔍 Validation d'URL Avancée (Optionnel)
+      </summary>
+      <div class="mt-4 space-y-4">
+
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Domaines autorisés</label>
+          <input class="w-full border rounded p-2" type="text" name="expected_domains" placeholder="example.com,mysite.org">
+          <p class="text-xs text-gray-500 mt-1">Séparez les domaines par des virgules. Laissez vide pour ignorer la validation.</p>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Paramètres UTM attendus</label>
+          <input class="w-full border rounded p-2" type="text" name="expected_utm_params" placeholder="utm_source=email;utm_campaign=promo">
+          <p class="text-xs text-gray-500 mt-1">Format: clé=valeur;clé2=valeur2. Laissez vide pour ignorer la validation.</p>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Textes de page de destination</label>
+          <input class="w-full border rounded p-2" type="text" name="landing_page_texts" placeholder="Welcome;Special offer;Buy now">
+          <p class="text-xs text-gray-500 mt-1">Textes à rechercher sur les pages de destination. Séparez par des points-virgules.</p>
+        </div>
+      </div>
+    </details>
 
     <div class="pt-2">
       <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Scanner</button>

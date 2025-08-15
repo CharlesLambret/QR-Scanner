@@ -1,5 +1,6 @@
 import os
 import uuid
+import shutil
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 from flask import current_app
@@ -10,6 +11,9 @@ class ScanOptions:
     timeout: int
     search_texts: Optional[List[str]]
     extract_text: bool
+    expected_domains: Optional[List[str]] = None
+    expected_utm_params: Optional[Dict[str, str]] = None
+    landing_page_texts: Optional[List[str]] = None
 
 def save_upload(file_storage) -> (str, str):
     # Validation simple
@@ -24,6 +28,30 @@ def save_upload(file_storage) -> (str, str):
     out_path = os.path.join(out_dir, "document.pdf")
     file_storage.save(out_path)
     return out_path, scan_id
+
+def cleanup_pdf_files(pdf_path: str, scan_id: str = None):
+    """
+    Supprime le fichier PDF et son dossier après traitement
+    """
+    try:
+        if os.path.exists(pdf_path):
+            # Supprimer le fichier PDF
+            os.remove(pdf_path)
+            print(f"🗑️ SERVICE: Fichier PDF supprimé: {pdf_path}")
+            
+            # Supprimer le dossier si vide (contient normalement scan_id)
+            pdf_dir = os.path.dirname(pdf_path)
+            if scan_id and scan_id in pdf_dir:
+                try:
+                    os.rmdir(pdf_dir)
+                    print(f"🗑️ SERVICE: Dossier scan supprimé: {pdf_dir}")
+                except OSError as e:
+                    # Dossier non vide, on ne peut pas le supprimer
+                    print(f"⚠️ SERVICE: Impossible de supprimer le dossier {pdf_dir}: {e}")
+        else:
+            print(f"⚠️ SERVICE: Fichier PDF non trouvé pour suppression: {pdf_path}")
+    except Exception as e:
+        print(f"❌ SERVICE: Erreur lors de la suppression du PDF {pdf_path}: {e}")
 
 def scan_file(pdf_path: str, options: ScanOptions, scan_id: str = None,
               progress_callback: callable = None) -> Dict[str, Any]:
@@ -40,16 +68,25 @@ def scan_file(pdf_path: str, options: ScanOptions, scan_id: str = None,
         else:
             print(f"❌ SERVICE: progress_callback est None, impossible d'envoyer le message")
 
-    print(f"🚀 SERVICE: Création du scanner QRCodePDFScanner")
-    scanner = QRCodePDFScanner(
-        pdf_path=pdf_path,
-        timeout=options.timeout,
-        search_texts=options.search_texts,
-        extract_text=options.extract_text,
-        progress_callback=log_progress
-    )
-    
-    print(f"🔍 SERVICE: Début du scan PDF")
-    results = scanner.scan_pdf()
-    print(f"✅ SERVICE: Scan terminé, résultats={results}")
-    return results
+    try:
+        print(f"🚀 SERVICE: Création du scanner QRCodePDFScanner")
+        scanner = QRCodePDFScanner(
+            pdf_path=pdf_path,
+            timeout=options.timeout,
+            search_texts=options.search_texts,
+            extract_text=options.extract_text,
+            progress_callback=log_progress,
+            expected_domains=options.expected_domains,
+            expected_utm_params=options.expected_utm_params,
+            landing_page_texts=options.landing_page_texts
+        )
+        
+        print(f"🔍 SERVICE: Début du scan PDF")
+        results = scanner.scan_pdf()
+        print(f"✅ SERVICE: Scan terminé, résultats={results}")
+        
+        return results
+    finally:
+        # Toujours nettoyer le fichier PDF après le scan, même en cas d'erreur
+        print(f"🧹 SERVICE: Nettoyage du fichier PDF")
+        cleanup_pdf_files(pdf_path, scan_id)

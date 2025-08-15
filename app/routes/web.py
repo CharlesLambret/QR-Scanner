@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request
 from flask_socketio import emit
-from ..services.scan_service import save_upload, scan_file, ScanOptions
+from ..services.scan_service import save_upload, scan_file, ScanOptions, cleanup_pdf_files
 from .. import socketio
 import uuid
 
@@ -32,6 +32,8 @@ def handle_client_ready(data):
                 del socketio.pending_scans[scan_id]
             except Exception as e:
                 print(f"❌ SOCKET: Erreur pendant le scan {scan_id}: {e}")
+                # En cas d'erreur, s'assurer que le fichier PDF est supprimé
+                cleanup_pdf_files(scan_data['pdf_path'], scan_id)
                 socketio.emit("scan_error", {"scan_id": scan_id, "error": str(e)})
         
         socketio.start_background_task(start_scan)
@@ -65,9 +67,34 @@ def scan():
     timeout = int(request.form.get("timeout", 10))
     extract_text = request.form.get("extract_text") == "on"
     search_texts = request.form.get("search_texts", "").split(";") or None
+    
+    # Parse new validation fields
+    expected_domains_raw = request.form.get("expected_domains", "")
+    expected_domains = [d.strip() for d in expected_domains_raw.split(",") if d.strip()] if expected_domains_raw else None
+    
+    expected_utm_params_raw = request.form.get("expected_utm_params", "")
+    expected_utm_params = {}
+    if expected_utm_params_raw:
+        for param in expected_utm_params_raw.split(";"):
+            if "=" in param:
+                key, value = param.split("=", 1)
+                expected_utm_params[key.strip()] = value.strip()
+    expected_utm_params = expected_utm_params if expected_utm_params else None
+    
+    landing_page_texts_raw = request.form.get("landing_page_texts", "")
+    landing_page_texts = [t.strip() for t in landing_page_texts_raw.split(";") if t.strip()] if landing_page_texts_raw else None
+    
     print(f"⚙️ WEB: Options - timeout: {timeout}, extract_text: {extract_text}")
+    print(f"⚙️ WEB: Validation - domains: {expected_domains}, utm: {expected_utm_params}, texts: {landing_page_texts}")
 
-    options = ScanOptions(timeout=timeout, search_texts=search_texts, extract_text=extract_text)
+    options = ScanOptions(
+        timeout=timeout, 
+        search_texts=search_texts, 
+        extract_text=extract_text,
+        expected_domains=expected_domains,
+        expected_utm_params=expected_utm_params,
+        landing_page_texts=landing_page_texts
+    )
 
     def ws_progress(msg):
         print(f"📢 WEB: Envoi WebSocket scan_progress: scan_id={scan_id}, message='{msg}'")

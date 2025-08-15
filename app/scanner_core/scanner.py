@@ -38,7 +38,10 @@ class QRCodePDFScanner:
         extract_text: bool = False,
         out_dir: Optional[str] = None,
         log_level: str = "INFO",
-        progress_callback=None
+        progress_callback=None,
+        expected_domains: Optional[List[str]] = None,
+        expected_utm_params: Optional[Dict[str, str]] = None,
+        landing_page_texts: Optional[List[str]] = None
     ):
         print(f"🏗️ SCANNER: __init__ appelé avec pdf_path={pdf_path}")
         print(f"🏗️ SCANNER: progress_callback présent={progress_callback is not None}")
@@ -47,6 +50,9 @@ class QRCodePDFScanner:
         self.out_dir = out_dir or os.path.dirname(pdf_path)
         self.logger = LoggerShim(level=log_level)
         self.progress_callback = progress_callback or (lambda msg: None)
+        self.expected_domains = expected_domains
+        self.expected_utm_params = expected_utm_params
+        self.landing_page_texts = landing_page_texts
         
         print(f"🏗️ SCANNER: Scanner initialisé avec success")
 
@@ -120,18 +126,74 @@ class QRCodePDFScanner:
         return self._decode_qr_opencv(gray)
 
     def _http_check(self, url: str) -> Dict[str, Any]:
-        res = {"url": url, "http_status": None, "netloc": "", "utm": None}
+        res = {
+            "url": url, 
+            "http_status": None, 
+            "netloc": "", 
+            "utm": None,
+            "domain_valid": None,
+            "utm_valid": None, 
+            "text_search_valid": None
+        }
         try:
             p = urlparse(url)
             res["netloc"] = p.netloc
             utm = {k: v[0] for k, v in parse_qs(p.query).items() if k.lower().startswith("utm_")}
             res["utm"] = utm or None
-            # HEAD puis GET si nécessaire
+            
+            # Domain validation
+            if self.expected_domains:
+                # Check exact match first
+                if p.netloc in self.expected_domains:
+                    res["domain_valid"] = True
+                else:
+                    # Check if netloc is a subdomain of any expected domain
+                    res["domain_valid"] = any(
+                        p.netloc.endswith('.' + domain) or p.netloc == domain
+                        for domain in self.expected_domains
+                    )
+            
+            # UTM parameter validation
+            if self.expected_utm_params:
+                if utm:
+                    res["utm_valid"] = all(
+                        utm.get(key) == expected_value 
+                        for key, expected_value in self.expected_utm_params.items()
+                    )
+                else:
+                    res["utm_valid"] = False
+            
+            # HTTP request for status and landing page text
+            response_text = None
             try:
                 r = requests.head(url, timeout=self.task.timeout, allow_redirects=True)
+                res["http_status"] = r.status_code
+                
+                # If we need to check landing page text, we need to do a GET request
+                if self.landing_page_texts and r.status_code == 200:
+                    try:
+                        r = requests.get(url, timeout=self.task.timeout, allow_redirects=True)
+                        response_text = r.text
+                    except Exception:
+                        pass
             except Exception:
-                r = requests.get(url, timeout=self.task.timeout, allow_redirects=True)
-            res["http_status"] = getattr(r, "status_code", None)
+                try:
+                    r = requests.get(url, timeout=self.task.timeout, allow_redirects=True)
+                    res["http_status"] = getattr(r, "status_code", None)
+                    if self.landing_page_texts:
+                        response_text = getattr(r, "text", "")
+                except Exception:
+                    pass
+            
+            # Landing page text validation
+            if self.landing_page_texts and response_text:
+                res["text_search_valid"] = any(
+                    text.lower() in response_text.lower() 
+                    for text in self.landing_page_texts
+                )
+            elif self.landing_page_texts:
+                res["text_search_valid"] = False
+                
         except Exception as e:
             self.safe_log("WARNING", f"HTTP check failed for {url}: {e}")
         return res
