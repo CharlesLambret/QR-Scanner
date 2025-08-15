@@ -220,5 +220,4 @@ def unsupported_media_type(error):
 @bp.errorhandler(Exception)
 def handle_api_error(error):
     """Gestionnaire d'erreur général pour l'API"""
-    print(f"❌ API: Erreur non gérée: {error}")
     return _error_response("Internal server error", 500)

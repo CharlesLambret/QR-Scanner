@@ -45,7 +45,6 @@ class FileService:
         file_path = os.path.join(scan_dir, "document.pdf")
         file_storage.save(file_path)
         
-        print(f"💾 FILE_SERVICE: Fichier sauvé: {file_path} (scan_id: {scan_id})")
         return file_path, scan_id
     
     @staticmethod
@@ -64,25 +63,20 @@ class FileService:
             if os.path.exists(pdf_path):
                 # Supprimer le fichier PDF
                 os.remove(pdf_path)
-                print(f"🗑️ FILE_SERVICE: Fichier PDF supprimé: {pdf_path}")
                 
                 # Supprimer le dossier si vide et contient scan_id
                 pdf_dir = os.path.dirname(pdf_path)
                 if scan_id and scan_id in pdf_dir:
                     try:
                         os.rmdir(pdf_dir)
-                        print(f"🗑️ FILE_SERVICE: Dossier scan supprimé: {pdf_dir}")
                     except OSError as e:
                         # Dossier non vide
-                        print(f"⚠️ FILE_SERVICE: Impossible de supprimer le dossier {pdf_dir}: {e}")
                 
                 return True
             else:
-                print(f"⚠️ FILE_SERVICE: Fichier PDF non trouvé pour suppression: {pdf_path}")
                 return False
                 
         except Exception as e:
-            print(f"❌ FILE_SERVICE: Erreur lors de la suppression du PDF {pdf_path}: {e}")
             return False
     
     @staticmethod
@@ -133,7 +127,6 @@ class FileService:
         """
         upload_dir = current_app.config["UPLOAD_FOLDER"]
         os.makedirs(upload_dir, exist_ok=True)
-        print(f"📁 FILE_SERVICE: Dossier d'upload vérifié: {upload_dir}")
     
     @staticmethod
     def cleanup_old_files(max_age_hours: int = 24) -> int:
@@ -166,9 +159,7 @@ class FileService:
                     if current_time - stat.st_mtime > max_age_seconds:
                         shutil.rmtree(item_path)
                         deleted_count += 1
-                        print(f"🗑️ FILE_SERVICE: Dossier ancien supprimé: {item_path}")
                         
         except Exception as e:
-            print(f"❌ FILE_SERVICE: Erreur lors du nettoyage automatique: {e}")
         
         return deleted_count

@@ -14,6 +14,9 @@ class WebSocketService:
     # Stockage temporaire des scans en cours
     pending_scans: Dict[str, Dict[str, Any]] = {}
     
+    # Stockage temporaire des résultats de scan pour export
+    scan_results: Dict[str, Dict[str, Any]] = {}
+    
     @classmethod
     def register_scan(cls, scan_id: str, scan_data: Dict[str, Any]) -> None:
         """
@@ -24,7 +27,6 @@ class WebSocketService:
             scan_data: Données du scan (pdf_path, options, etc.)
         """
         cls.pending_scans[scan_id] = scan_data
-        print(f"📦 WS_SERVICE: Scan enregistré pour scan_id={scan_id}")
     
     @classmethod
     def get_scan_data(cls, scan_id: str) -> Optional[Dict[str, Any]]:
@@ -40,6 +42,30 @@ class WebSocketService:
         return cls.pending_scans.get(scan_id)
     
     @classmethod
+    def store_scan_results(cls, scan_id: str, results: Dict[str, Any]) -> None:
+        """
+        Stocke les résultats d'un scan pour export ultérieur
+        
+        Args:
+            scan_id: Identifiant du scan
+            results: Résultats du scan
+        """
+        cls.scan_results[scan_id] = results
+    
+    @classmethod
+    def get_scan_results(cls, scan_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Récupère les résultats d'un scan
+        
+        Args:
+            scan_id: Identifiant du scan
+            
+        Returns:
+            Optional[Dict]: Résultats du scan ou None si non trouvé
+        """
+        return cls.scan_results.get(scan_id)
+    
+    @classmethod
     def remove_scan(cls, scan_id: str) -> bool:
         """
         Supprime un scan des données temporaires
@@ -50,11 +76,16 @@ class WebSocketService:
         Returns:
             bool: True si le scan a été supprimé
         """
+        removed = False
         if scan_id in cls.pending_scans:
             del cls.pending_scans[scan_id]
-            print(f"🗑️ WS_SERVICE: Données de scan supprimées pour scan_id={scan_id}")
-            return True
-        return False
+            removed = True
+        
+        # Note: On ne supprime pas les résultats immédiatement pour permettre l'export CSV
+        # Ils seront nettoyés périodiquement ou lors d'un redémarrage
+        
+        if removed:
+        return removed
     
     @staticmethod
     def emit_progress(scan_id: str, message: str) -> None:
@@ -67,9 +98,7 @@ class WebSocketService:
         """
         try:
             socketio.emit("scan_progress", {"scan_id": scan_id, "message": message})
-            print(f"📢 WS_SERVICE: Progression envoyée pour scan_id={scan_id}: {message}")
         except Exception as e:
-            print(f"❌ WS_SERVICE: Erreur lors de l'envoi de progression: {e}")
     
     @staticmethod
     def emit_complete(scan_id: str, results: Dict[str, Any]) -> None:
@@ -81,10 +110,11 @@ class WebSocketService:
             results: Résultats du scan
         """
         try:
+            # Stocker les résultats pour export CSV
+            WebSocketService.store_scan_results(scan_id, results)
+            
             socketio.emit("scan_complete", {"scan_id": scan_id, "results": results})
-            print(f"📢 WS_SERVICE: Scan terminé envoyé pour scan_id={scan_id}")
         except Exception as e:
-            print(f"❌ WS_SERVICE: Erreur lors de l'envoi de completion: {e}")
     
     @staticmethod
     def emit_error(scan_id: str, error_message: str) -> None:
@@ -97,9 +127,7 @@ class WebSocketService:
         """
         try:
             socketio.emit("scan_error", {"scan_id": scan_id, "error": error_message})
-            print(f"📢 WS_SERVICE: Erreur envoyée pour scan_id={scan_id}: {error_message}")
         except Exception as e:
-            print(f"❌ WS_SERVICE: Erreur lors de l'envoi d'erreur: {e}")
     
     @staticmethod
     def create_progress_callback(scan_id: str) -> Callable[[str], None]:
@@ -132,14 +160,12 @@ class WebSocketService:
         def background_task():
             with app.app_context():
                 try:
-                    print(f"🚀 WS_SERVICE: Démarrage du scan en arrière-plan pour scan_id={scan_id}")
                     results = scan_function(*args, **kwargs)
                     
                     WebSocketService.emit_complete(scan_id, results)
                     WebSocketService.remove_scan(scan_id)
                     
                 except Exception as e:
-                    print(f"❌ WS_SERVICE: Erreur pendant le scan {scan_id}: {e}")
                     WebSocketService.emit_error(scan_id, str(e))
                     WebSocketService.remove_scan(scan_id)
         
@@ -151,11 +177,9 @@ class WebSocketService:
 def handle_client_ready(data):
     """Gestionnaire pour l'événement client_ready"""
     scan_id = data.get('scan_id')
-    print(f"🎯 WS_SERVICE: Client prêt pour scan_id={scan_id}")
     
     scan_data = WebSocketService.get_scan_data(scan_id)
     if scan_data:
-        print(f"🚀 WS_SERVICE: Démarrage du scan pour scan_id={scan_id}")
         
         # Démarrer le scan en arrière-plan
         from .scan_service import scan_file
@@ -167,23 +191,19 @@ def handle_client_ready(data):
             progress_callback=scan_data['progress_callback']
         )
     else:
-        print(f"❌ WS_SERVICE: Aucune donnée de scan trouvée pour scan_id={scan_id}")
 
 
 @socketio.on('test_message')
 def handle_test_message(data):
     """Gestionnaire pour les messages de test"""
-    print(f"🧪 WS_SERVICE: Message de test reçu: {data}")
     emit('test_response', {'message': 'Test reçu par le serveur'})
 
 
 @socketio.on('connect')
 def handle_connect():
     """Gestionnaire de connexion"""
-    print("🔌 WS_SERVICE: Client connecté")
 
 
 @socketio.on('disconnect')
 def handle_disconnect():
     """Gestionnaire de déconnexion"""
-    print("🔌 WS_SERVICE: Client déconnecté")

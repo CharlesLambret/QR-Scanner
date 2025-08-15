@@ -10,7 +10,6 @@ try:
     LANGEXTRACT_AVAILABLE = True
 except ImportError:
     LANGEXTRACT_AVAILABLE = False
-    print("⚠️ AI_EXTRACTION: LangExtract not available - AI extraction disabled")
 
 class AIDataExtractor:
     """
@@ -19,7 +18,6 @@ class AIDataExtractor:
     
     def __init__(self):
         if not LANGEXTRACT_AVAILABLE:
-            print("⚠️ AI_EXTRACTION: LangExtract not installed, AI extraction disabled")
             self.enabled = False
             return
             
@@ -31,17 +29,12 @@ class AIDataExtractor:
             getattr(current_app.config, 'GOOGLE_API_KEY', None)
         )
         
-        print(f"🔍 AI_EXTRACTION: Recherche de clé API...")
-        print(f"🔍 AI_EXTRACTION: LANGEXTRACT_API_KEY dans env: {'✅' if os.getenv('LANGEXTRACT_API_KEY') else '❌'}")
-        print(f"🔍 AI_EXTRACTION: GOOGLE_API_KEY dans env: {'✅' if os.getenv('GOOGLE_API_KEY') else '❌'}")
         
         if api_key:
             # Set the environment variable for LangExtract
             os.environ['LANGEXTRACT_API_KEY'] = api_key
             self.enabled = True
-            print("✅ AI_EXTRACTION: LangExtract configured successfully")
         else:
-            print("⚠️ AI_EXTRACTION: No API key found (LANGEXTRACT_API_KEY or GOOGLE_API_KEY), AI extraction disabled")
             self.enabled = False
     
     def extract_data(self, pdf_text: str, extraction_options: Dict[str, Any]) -> Dict[str, Any]:
@@ -59,7 +52,6 @@ class AIDataExtractor:
             Dictionary with extraction results
         """
         if not self.enabled:
-            print("⚠️ AI_EXTRACTION: LangExtract not configured, returning empty result")
             return {
                 "success": True,
                 "message": "AI extraction not available - LangExtract not configured properly",
@@ -79,13 +71,11 @@ class AIDataExtractor:
         user_query = self._build_query_from_keywords(keywords, extraction_options)
         
         try:
-            print(f"🤖 AI_EXTRACTION: Starting LangExtract processing for keywords: {keywords}...")
             
             # Create a dynamic prompt based on keywords
             prompt = self._create_extraction_prompt_from_keywords(keywords, extraction_options)
             examples = self._create_examples_from_keywords(keywords, extraction_options)
             
-            print(f"🤖 AI_EXTRACTION: Sending request to LangExtract")
             
             # Use LangExtract to extract data
             result = lx.extract(
@@ -98,7 +88,6 @@ class AIDataExtractor:
             )
             
             if result and hasattr(result, 'extractions') and result.extractions:
-                print(f"🤖 AI_EXTRACTION: LangExtract found {len(result.extractions)} extractions")
                 
                 # Parse the LangExtract results into our format
                 parsed_data = self._parse_langextract_result(result, extraction_options)
@@ -119,7 +108,6 @@ class AIDataExtractor:
                 }
                 
         except Exception as e:
-            print(f"❌ AI_EXTRACTION: Error during LangExtract extraction: {e}")
             return {
                 "success": False,
                 "error": f"LangExtract extraction failed: {str(e)}",
@@ -398,7 +386,6 @@ class AIDataExtractor:
             return parsed_items
             
         except Exception as e:
-            print(f"❌ AI_EXTRACTION: Error parsing LangExtract result: {e}")
             # Fallback: return simple format
             return [{
                 "id": 1,

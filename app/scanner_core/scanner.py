@@ -23,7 +23,6 @@ class LoggerShim:
     def log(self, level: str, msg: str):
         wanted = ["DEBUG", "INFO", "WARNING", "ERROR"]
         if wanted.index(level) >= wanted.index(self.level):
-            print(f"{level} - {msg}")
 
 
 class QRCodePDFScanner:
@@ -43,8 +42,6 @@ class QRCodePDFScanner:
         expected_utm_params: Optional[Dict[str, str]] = None,
         ai_extraction_options: Optional[Dict[str, Any]] = None
     ):
-        print(f"🏗️ SCANNER: __init__ appelé avec pdf_path={pdf_path}")
-        print(f"🏗️ SCANNER: progress_callback présent={progress_callback is not None}")
         
         # Configuration de base
         self.task = PDFTask(
@@ -62,7 +59,6 @@ class QRCodePDFScanner:
             ai_extraction_options
         )
         
-        print(f"🏗️ SCANNER: Scanner refactorisé initialisé avec succès")
 
     def _init_modules(self, expected_domains, expected_utm_params, ai_extraction_options):
         """Initialise tous les modules spécialisés"""
@@ -75,6 +71,7 @@ class QRCodePDFScanner:
             timeout=self.task.timeout,
             expected_domains=expected_domains,
             expected_utm_params=expected_utm_params,
+            search_texts=self.task.search_texts,
             log_callback=self.safe_log
         )
         
@@ -104,10 +101,8 @@ class QRCodePDFScanner:
         Returns:
             Dict: Résultats du scan
         """
-        print(f"📖 SCANNER: scan_pdf démarré")
         
         pdf_path = self.task.pdf_path
-        print(f"📖 SCANNER: Ouverture du PDF {pdf_path}")
         
         try:
             doc = fitz.open(pdf_path)
@@ -118,7 +113,6 @@ class QRCodePDFScanner:
             return self._process_document(doc)
         finally:
             doc.close()
-            print(f"📖 SCANNER: Document fermé")
     
     def _process_document(self, doc: fitz.Document) -> Dict[str, Any]:
         """
@@ -131,7 +125,6 @@ class QRCodePDFScanner:
             Dict: Résultats consolidés
         """
         total_pages = len(doc)
-        print(f"📢 SCANNER: Envoi du message de progression initial")
         self.progress_callback(f"Lecture du PDF : {total_pages} pages")
         
         # Structures de données pour collecter les résultats
@@ -147,7 +140,6 @@ class QRCodePDFScanner:
             # Traitement page par page
             for page_num in range(total_pages):
                 current_page = page_num + 1
-                print(f"📄 SCANNER: Traitement page {current_page}/{total_pages}")
                 self.progress_callback(f"Lecture page {current_page}/{total_pages}")
                 
                 page = doc[page_num]
@@ -196,13 +188,11 @@ class QRCodePDFScanner:
         }
         
         # 1. Détection QR codes
-        print(f"🔍 SCANNER: Détection QR codes page {page_number}")
         qr_results = self._process_qr_codes(page, page_number)
         results["qr_results"] = qr_results
         
         # 2. Extraction IA (si configurée)
         if self.ai_extractor and self.ai_extraction_options:
-            print(f"🤖 SCANNER: Extraction IA pour page {page_number}")
             ai_extractions = self._process_ai_extraction(page, page_number)
             results["ai_extractions"] = ai_extractions
         
@@ -220,24 +210,19 @@ class QRCodePDFScanner:
             List[Dict]: Résultats des QR codes avec validation HTTP
         """
         # Conversion de la page en image
-        print(f"🖼️ SCANNER: Conversion page {page_number} en image")
         image = self._page_to_image(page, zoom=2.0)
         
         # Détection des QR codes
         qr_values = self.qr_detector.detect_qr_codes(image)
-        print(f"🔍 SCANNER: QR codes trouvés page {page_number}: {qr_values}")
         
         page_results = []
         
         # Validation HTTP pour chaque URL trouvée
         for qr_value in qr_values:
-            print(f"🔗 SCANNER: Analyse QR: {qr_value}")
             if qr_value.startswith(("http://", "https://")):
-                print(f"🌐 SCANNER: Validation HTTP pour URL: {qr_value}")
                 validation_result = self.http_validator.validate_url(qr_value)
                 validation_result["page"] = page_number
                 page_results.append(validation_result)
-                print(f"🌐 SCANNER: Résultat validation: {validation_result}")
         
         return page_results
     
@@ -270,7 +255,6 @@ class QRCodePDFScanner:
             extraction['attributes']['page'] = page_number
             page_extractions.append(extraction)
         
-        print(f"🤖 SCANNER: {len(page_extractions)} extractions IA trouvées page {page_number}")
         return page_extractions
     
     def _page_to_image(self, page: fitz.Page, zoom: float = 2.0) -> np.ndarray:
@@ -337,7 +321,6 @@ class QRCodePDFScanner:
         Returns:
             Dict: Résultats consolidés finaux
         """
-        print(f"🔗 SCANNER: Déduplication des URLs")
         
         # Déduplication des URLs par (url, page)
         seen_urls = set()
@@ -358,10 +341,8 @@ class QRCodePDFScanner:
                 "total_extractions": len(all_ai_extractions),
                 "model_used": "gemini-2.5-flash "
             }
-            print(f"🤖 SCANNER: Total extractions IA: {len(all_ai_extractions)}")
         
         # Construire les résultats finaux
-        print(f"📊 SCANNER: Création des résultats finaux")
         results = {
             "stats": {
                 "total_pages": total_pages,
@@ -419,16 +400,7 @@ class QRCodePDFScanner:
             results: Résultats finaux à logger
         """
         stats = results["stats"]
-        print(f"📊 SCANNER: Résultats finaux créés:")
-        print(f"📊 SCANNER: - Pages totales: {stats['total_pages']}")
-        print(f"📊 SCANNER: - Pages avec QR: {stats['pages_with_qr']}")
-        print(f"📊 SCANNER: - URLs uniques: {stats['unique_urls']}")
-        print(f"📊 SCANNER: - URLs trouvées: {stats['total_url_results']}")
-        print(f"📊 SCANNER: - Extractions texte: {stats['extracted_lines']}")
-        print(f"📊 SCANNER: - Extractions IA: {stats['ai_extracted_items']}")
         
         # Log du résumé de validation si disponible
         if results.get("validation_summary"):
             summary = results["validation_summary"]
-            print(f"📊 SCANNER: - HTTP success: {summary.get('http_success', 0)}")
-            print(f"📊 SCANNER: - Temps réponse moyen: {summary.get('avg_response_time', 0)}ms")

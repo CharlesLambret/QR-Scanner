@@ -3,10 +3,11 @@ Routes web refactorisées
 Gestion simplifiée des routes web utilisant les services modulaires
 """
 import uuid
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, Response
 from ..services.file_service import FileService
 from ..services.websocket_service import WebSocketService
 from ..services.scan_service import ScanOptions
+from ..services.csv_export_service import CSVExportService
 
 bp = Blueprint("web", __name__)
 
@@ -23,25 +24,20 @@ def scan():
     Endpoint de scan web avec WebSocket
     Démarre le processus de scan en arrière-plan
     """
-    print(f"🌐 WEB: Requête POST /scan reçue")
     
     # Validation du fichier
     uploaded_file = request.files.get("pdf")
     if not uploaded_file:
-        print(f"❌ WEB: Aucun fichier fourni")
         return render_template("index.html", error="Aucun fichier fourni")
 
     try:
         # Sauvegarde du fichier
         scan_id = str(uuid.uuid4())
-        print(f"🆔 WEB: scan_id généré: {scan_id}")
         
         pdf_path, _ = FileService.save_upload(uploaded_file)
-        print(f"💾 WEB: Fichier sauvé: {pdf_path}")
 
         # Extraction des options du formulaire
         scan_options = _extract_scan_options_from_form(request.form)
-        print(f"⚙️ WEB: Options extraites: {scan_options}")
 
         # Création du callback de progression WebSocket
         progress_callback = WebSocketService.create_progress_callback(scan_id)
@@ -56,14 +52,11 @@ def scan():
 
         # Enregistrement du scan pour traitement différé
         WebSocketService.register_scan(scan_id, scan_data)
-        print(f"📦 WEB: Données de scan enregistrées pour scan_id={scan_id}")
 
         # Redirection vers la page de résultats
-        print(f"🎭 WEB: Rendu template results.html avec scan_id={scan_id}")
         return render_template("results.html", scan_id=scan_id)
 
     except Exception as e:
-        print(f"❌ WEB: Erreur lors du traitement: {e}")
         return render_template("index.html", error=f"Erreur lors du traitement: {str(e)}")
 
 
@@ -103,12 +96,6 @@ def _extract_scan_options_from_form(form_data) -> ScanOptions:
         }
     
     # Log des options extraites
-    print(f"⚙️ WEB: Options de base - timeout: {timeout}")
-    print(f"⚙️ WEB: Recherche - textes: {search_texts}")
-    print(f"⚙️ WEB: Validation - domaines: {expected_domains}")
-    print(f"⚙️ WEB: Validation - UTM: {expected_utm_params}")
-    print(f"⚙️ WEB: IA - keywords: {extraction_keywords}")
-    print(f"⚙️ WEB: IA - longueurs code: {search_code_length}→{result_code_length}")
 
     return ScanOptions(
         timeout=timeout,
@@ -140,6 +127,47 @@ def _parse_utm_params(utm_str: str) -> dict:
     return params if params else None
 
 
+@bp.get("/export-csv/<scan_id>")
+def export_csv(scan_id: str):
+    """
+    Endpoint pour exporter les résultats d'un scan en CSV
+    
+    Args:
+        scan_id: Identifiant du scan
+        
+    Returns:
+        Response: Fichier CSV en téléchargement ou erreur 404
+    """
+    
+    # Récupérer les résultats du scan
+    results = WebSocketService.get_scan_results(scan_id)
+    if not results:
+        return "Résultats de scan non trouvés ou expirés", 404
+    
+    try:
+        # Générer le CSV
+        csv_content = CSVExportService.export_page_results(
+            results.get('url_results', []),
+            results.get('ai_extraction')
+        )
+        
+        # Générer le nom de fichier
+        filename = CSVExportService.generate_filename(scan_id)
+        
+        
+        # Retourner le fichier CSV
+        return Response(
+            csv_content,
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"',
+                'Content-Type': 'text/csv; charset=utf-8'
+            }
+        )
+        
+    except Exception as e:
+        return f"Erreur lors de la génération du CSV: {str(e)}", 500
+
 
 @bp.errorhandler(413)
 def file_too_large(error):
@@ -151,6 +179,5 @@ def file_too_large(error):
 @bp.errorhandler(Exception)
 def handle_error(error):
     """Gestionnaire d'erreur général pour les routes web"""
-    print(f"❌ WEB: Erreur non gérée: {error}")
     return render_template("index.html", 
                          error="Une erreur inattendue s'est produite"), 500

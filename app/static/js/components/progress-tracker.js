@@ -4,8 +4,6 @@
 class ProgressTracker {
   constructor() {
     this.progressElement = document.getElementById("progress");
-    this.statsElement = document.getElementById("stats");
-    this.statsListElement = document.getElementById("stats-list");
     
     console.log("📊 ProgressTracker initialisé");
   }
@@ -34,20 +32,6 @@ class ProgressTracker {
     }
   }
 
-  displayStats(stats) {
-    if (!stats || !this.statsElement || !this.statsListElement) return;
-    
-    this.statsListElement.innerHTML = `
-      <li>Pages totales : <strong>${stats.total_pages}</strong></li>
-      <li>Pages avec QR codes : <strong>${stats.pages_with_qr}</strong></li>
-      <li>URLs uniques trouvées : <strong>${stats.unique_urls}</strong></li>
-      <li>Lignes de texte extraites : <strong>${stats.extracted_lines}</strong></li>
-      ${stats.ai_extracted_items !== undefined ? `<li>Données IA extraites : <strong>${stats.ai_extracted_items}</strong></li>` : ''}
-    `;
-    
-    this.statsElement.classList.remove("hidden");
-    console.log("📊 Statistiques affichées:", stats);
-  }
 
   showSuccessMessage() {
     const successDiv = document.createElement("div");

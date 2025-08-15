@@ -1,71 +1,14 @@
 /**
- * Composant d'affichage des résultats QR et extractions de texte
+ * Composant d'affichage des résultats par page
  */
 class ResultsDisplay {
   constructor() {
-    this.qrResultsSection = document.getElementById("qr-results-section");
-    this.resultsTableBody = document.querySelector("#results-table tbody");
-    this.extractionsDiv = document.getElementById("extractions");
-    this.extractionsContent = document.getElementById("extractions-content");
     this.byPageSection = document.getElementById("by-page-section");
     this.byPageContent = document.getElementById("by-page-content");
     
     console.log("🔗 ResultsDisplay initialisé");
   }
 
-  displayQRResults(urlResults) {
-    if (!urlResults || urlResults.length === 0) {
-      this._showNoQRMessage();
-      return;
-    }
-
-    console.log("🔗 Affichage du tableau des QR codes");
-    
-    if (this.qrResultsSection) {
-      this.qrResultsSection.classList.remove("hidden");
-    }
-    
-    if (this.resultsTableBody) {
-      this.resultsTableBody.innerHTML = "";
-      
-      urlResults.forEach((result) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="border px-4 py-2">${result.page}</td>
-          <td class="border px-4 py-2">
-            <a href="${result.url}" target="_blank" class="text-blue-600 hover:underline" title="${result.url}">
-              ${this._formatUrl(result.url)}
-            </a>
-          </td>
-          <td class="border px-4 py-2">
-            <span class="${result.http_status === 200 ? 'text-green-600' : 'text-red-600'}">
-              ${result.http_status || 'N/A'}
-            </span>
-          </td>
-          <td class="border px-4 py-2 text-sm">${this._getValidationStatus(result.domain_valid)}</td>
-          <td class="border px-4 py-2 text-sm">${this._getValidationStatus(result.utm_valid)}</td>
-          <td class="border px-4 py-2 text-sm">${this._getValidationStatus(result.text_search_valid)}</td>
-        `;
-        this.resultsTableBody.appendChild(tr);
-      });
-    }
-  }
-
-  displayTextExtractions(extractions) {
-    if (!extractions || extractions.length === 0) return;
-    
-    console.log("📝 Affichage des extractions de texte");
-    
-    if (this.extractionsContent) {
-      this.extractionsContent.innerHTML = extractions
-        .map(ext => `<div class="mb-1"><strong>Page ${ext.page}:</strong> ${this._escapeHtml(ext.line)}</div>`)
-        .join("");
-    }
-    
-    if (this.extractionsDiv) {
-      this.extractionsDiv.classList.remove("hidden");
-    }
-  }
 
   displayByPageSection(urlResults, aiExtraction) {
     console.log("📑 Création de la section par page...");
@@ -96,34 +39,6 @@ class ResultsDisplay {
     console.log("📑 Section par page affichée");
   }
 
-  displayStats(stats) {
-    if (!stats) return;
-    
-    console.log("📊 Affichage des statistiques");
-    
-    const statsElement = document.getElementById("stats");
-    const statsListElement = document.getElementById("stats-list");
-    
-    if (statsElement && statsListElement) {
-      // Créer la liste des statistiques
-      const statsList = [
-        `Pages totales: ${stats.total_pages || 0}`,
-        `Pages avec QR: ${stats.pages_with_qr || 0}`,
-        `URLs trouvées: ${stats.total_qr_found || 0}`,
-        `URLs uniques: ${stats.unique_urls || 0}`,
-        `Extractions texte: ${stats.text_extractions || 0}`,
-        `Extractions IA: ${stats.ai_extractions || 0}`,
-        `Requêtes HTTP réussies: ${stats.http_success || 0}`,
-        `Temps de réponse moyen: ${stats.avg_response_time || 0}ms`
-      ];
-      
-      statsListElement.innerHTML = statsList
-        .map(stat => `<li>${stat}</li>`)
-        .join("");
-      
-      statsElement.classList.remove("hidden");
-    }
-  }
 
   showSuccessMessage() {
     console.log("✅ Affichage du message de succès");
@@ -138,33 +53,6 @@ class ResultsDisplay {
     }
   }
 
-  _formatUrl(url, maxLength = 50) {
-    if (url.length > maxLength) {
-      return url.substring(0, maxLength) + '...';
-    }
-    return url;
-  }
-
-  _getValidationStatus(validationResult) {
-    if (validationResult === null || validationResult === undefined) {
-      return '<span class="text-gray-500">Non testé</span>';
-    } else if (validationResult === true) {
-      return '<span class="text-green-600 font-semibold">✓ Valide</span>';
-    } else {
-      return '<span class="text-red-600 font-semibold">✗ Invalide</span>';
-    }
-  }
-
-  _showNoQRMessage() {
-    const noResultsDiv = document.createElement("div");
-    noResultsDiv.className = "bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4";
-    noResultsDiv.innerHTML = "⚠️ Aucun QR code avec URL détecté dans ce PDF.";
-    
-    const statsElement = document.getElementById("stats");
-    if (statsElement) {
-      statsElement.after(noResultsDiv);
-    }
-  }
 
   _organizeDataByPage(urlResults, aiExtraction) {
     const pageData = {};
@@ -290,13 +178,25 @@ class ResultsDisplay {
             </span>
           </div>
           <div class="font-medium text-gray-800">
-            ${this._escapeHtml(extraction.text || extraction.extraction_text || '')}
+            ${this._escapeHtml(this._getDisplayText(extraction))}
           </div>
         </div>
       `;
     });
     
     return section + `</div>`;
+  }
+
+  _getDisplayText(extraction) {
+    // For code extractions, prioritize the extracted_base if available
+    if (extraction.extraction_class === 'code' && 
+        extraction.attributes && 
+        extraction.attributes.extracted_base) {
+      return extraction.attributes.extracted_base;
+    }
+    
+    // Fallback to the original text
+    return extraction.text || extraction.extraction_text || '';
   }
 
   _escapeHtml(text) {

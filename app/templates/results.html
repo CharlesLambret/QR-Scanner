@@ -1,13 +1,11 @@
 {% extends "layout.html" %}
 {% block content %}
   <!-- Section de progression -->
-  {% include 'components/progress-section.html' %}
-  
-  <!-- Tableau des résultats QR -->
-  {% include 'components/results-table.html' %}
-  
-  <!-- Extractions IA -->
-  {% include 'components/ai-results.html' %}
+  <div id="progress-section">
+    <div id="progress" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4 w-1/3 mx-auto">
+      En attente du démarrage du scan...
+    </div>
+  </div>
   
   <!-- Section par page -->
   {% include 'components/by-page-section.html' %}
@@ -18,7 +16,6 @@
   <script src="/static/js/services/socket-service.js"></script>
   <script src="/static/js/components/progress-tracker.js"></script>
   <script src="/static/js/components/results-display.js"></script>
-  <script src="/static/js/components/ai-display.js"></script>
   <script>
     // Configuration globale
     window.SCAN_CONFIG = {
@@ -31,23 +28,59 @@
       const socketService = new SocketService(window.SCAN_CONFIG.scanId);
       const progressTracker = new ProgressTracker();
       const resultsDisplay = new ResultsDisplay();
-      const aiDisplay = new AIDisplay();
       
       // Configuration des événements
       socketService.onProgress((data) => progressTracker.updateProgress(data.message));
       socketService.onComplete((data) => {
         progressTracker.hideProgress();
-        resultsDisplay.displayStats(data.results.stats);
-        resultsDisplay.displayQRResults(data.results.url_results || []);
-        aiDisplay.displayAIExtractions(data.results.ai_extraction);
-        resultsDisplay.displayTextExtractions(data.results.extractions || []);
         resultsDisplay.displayByPageSection(data.results.url_results || [], data.results.ai_extraction);
         resultsDisplay.showSuccessMessage();
+        
+        // Afficher le bouton de téléchargement CSV
+        showCSVDownloadButton();
       });
       socketService.onError((data) => progressTracker.showError(data.error));
       
       // Démarrage
       socketService.connect();
     });
+    
+    // Fonction pour afficher le bouton de téléchargement CSV
+    function showCSVDownloadButton() {
+      const headerActions = document.getElementById('header-actions');
+      const downloadBtn = document.getElementById('download-csv-btn');
+      
+      if (headerActions && downloadBtn) {
+        headerActions.classList.remove('hidden');
+        
+        // Ajouter l'événement de clic
+        downloadBtn.addEventListener('click', function() {
+          downloadCSV();
+        });
+      }
+    }
+    
+    // Fonction pour télécharger le CSV
+    function downloadCSV() {
+      const scanId = window.SCAN_CONFIG.scanId;
+      
+      if (!scanId) {
+        alert('Erreur: Identifiant de scan non trouvé');
+        return;
+      }
+      
+      // Créer un lien de téléchargement et le déclencher
+      const downloadUrl = `/export-csv/${scanId}`;
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = '';
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log(`📄 CSV download initiated for scan_id: ${scanId}`);
+    }
   </script>
 {% endblock %}

@@ -35,26 +35,20 @@ def scan_file(pdf_path: str, options: ScanOptions, scan_id: str = None,
     Raises:
         Exception: En cas d'erreur pendant le scan
     """
-    print(f"🔧 SCAN_SERVICE: scan_file appelé avec pdf_path={pdf_path}, scan_id={scan_id}")
-    print(f"🔧 SCAN_SERVICE: options={options}")
-    print(f"🔧 SCAN_SERVICE: progress_callback présent={progress_callback is not None}")
     
     # Validation du fichier
     file_info = FileService.get_file_info(pdf_path)
     if not file_info["exists"]:
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
     
-    print(f"📄 SCAN_SERVICE: Fichier validé - {file_info['size_mb']}MB")
     
     # Fonction de progression avec logs
     def enhanced_progress_callback(message: str):
-        print(f"📢 SCAN_SERVICE: Progression - {message}")
         if progress_callback:
             progress_callback(message)
     
     try:
         # Création et configuration du scanner
-        print(f"🚀 SCAN_SERVICE: Création du scanner QRCodePDFScanner")
         scanner = QRCodePDFScanner(
             pdf_path=pdf_path,
             timeout=options.timeout,
@@ -66,7 +60,6 @@ def scan_file(pdf_path: str, options: ScanOptions, scan_id: str = None,
         )
         
         # Exécution du scan
-        print(f"🔍 SCAN_SERVICE: Début du scan PDF")
         enhanced_progress_callback("Initialisation du scan...")
         
         results = scanner.scan_pdf()
@@ -74,20 +67,17 @@ def scan_file(pdf_path: str, options: ScanOptions, scan_id: str = None,
         # Enrichissement des résultats avec métadonnées
         results = _enrich_results(results, pdf_path, options, scan_id)
         
-        print(f"✅ SCAN_SERVICE: Scan terminé avec succès")
         enhanced_progress_callback("Scan terminé avec succès")
         
         return results
         
     except Exception as e:
         error_msg = f"Erreur pendant le scan: {str(e)}"
-        print(f"❌ SCAN_SERVICE: {error_msg}")
         enhanced_progress_callback(f"Erreur: {str(e)}")
         raise Exception(error_msg)
     
     finally:
         # Nettoyage automatique du fichier après le scan
-        print(f"🧹 SCAN_SERVICE: Nettoyage du fichier PDF")
         FileService.cleanup_files(pdf_path, scan_id)
 
 
