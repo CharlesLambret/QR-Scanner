@@ -23,6 +23,7 @@ class LoggerShim:
     def log(self, level: str, msg: str):
         wanted = ["DEBUG", "INFO", "WARNING", "ERROR"]
         if wanted.index(level) >= wanted.index(self.level):
+            print(f"{level} - {msg}")
 
 
 class QRCodePDFScanner:

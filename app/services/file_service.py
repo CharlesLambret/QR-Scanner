@@ -70,8 +70,7 @@ class FileService:
                     try:
                         os.rmdir(pdf_dir)
                     except OSError as e:
-                        # Dossier non vide
-                
+                        pass  # Dossier non vide
                 return True
             else:
                 return False
@@ -161,5 +160,5 @@ class FileService:
                         deleted_count += 1
                         
         except Exception as e:
-        
+            pass
         return deleted_count
