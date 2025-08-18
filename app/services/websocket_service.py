@@ -85,6 +85,7 @@ class WebSocketService:
         # Ils seront nettoyés périodiquement ou lors d'un redémarrage
         
         if removed:
+            pass
         return removed
     
     @staticmethod
@@ -99,6 +100,7 @@ class WebSocketService:
         try:
             socketio.emit("scan_progress", {"scan_id": scan_id, "message": message})
         except Exception as e:
+            pass
     
     @staticmethod
     def emit_complete(scan_id: str, results: Dict[str, Any]) -> None:
@@ -115,6 +117,7 @@ class WebSocketService:
             
             socketio.emit("scan_complete", {"scan_id": scan_id, "results": results})
         except Exception as e:
+            pass
     
     @staticmethod
     def emit_error(scan_id: str, error_message: str) -> None:
@@ -128,6 +131,7 @@ class WebSocketService:
         try:
             socketio.emit("scan_error", {"scan_id": scan_id, "error": error_message})
         except Exception as e:
+            pass
     
     @staticmethod
     def create_progress_callback(scan_id: str) -> Callable[[str], None]:
@@ -191,6 +195,7 @@ def handle_client_ready(data):
             progress_callback=scan_data['progress_callback']
         )
     else:
+        pass
 
 
 @socketio.on('test_message')
@@ -202,8 +207,10 @@ def handle_test_message(data):
 @socketio.on('connect')
 def handle_connect():
     """Gestionnaire de connexion"""
+    pass
 
 
 @socketio.on('disconnect')
 def handle_disconnect():
     """Gestionnaire de déconnexion"""
+    pass
